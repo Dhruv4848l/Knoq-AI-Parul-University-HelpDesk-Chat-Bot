@@ -40,7 +40,7 @@ export const startCrawl = createServerFn({ method: "POST" })
       .parse(d ?? {}),
   )
   .handler(async ({ data, context }) => {
-    await ensureAdmin(context.supabase, context.userId);
+    await ensureAdmin(context.userId);
 
     const res = await fetch(`${FIRECRAWL_BASE}/crawl`, {
       method: "POST",
@@ -99,7 +99,7 @@ export const syncCrawl = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ jobId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    await ensureAdmin(context.supabase, context.userId);
+    await ensureAdmin(context.userId);
 
     const { data: job, error: jErr } = await supabaseAdmin
       .from("crawl_jobs")
@@ -215,7 +215,7 @@ export const generateFaqsFromPages = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ jobId: z.string().uuid(), batchSize: z.number().min(1).max(20).default(5) }).parse(d))
   .handler(async ({ data, context }) => {
-    await ensureAdmin(context.supabase, context.userId);
+    await ensureAdmin(context.userId);
 
     // Pull pages that haven't been FAQ-processed yet — use an offset based on job.faqs_generated
     const { data: job } = await supabaseAdmin.from("crawl_jobs").select("*").eq("id", data.jobId).single();
@@ -295,7 +295,7 @@ export const getCrawlJob = createServerFn({ method: "POST" })
   .middleware([requireSupabaseAuth])
   .inputValidator((d) => z.object({ jobId: z.string().uuid() }).parse(d))
   .handler(async ({ data, context }) => {
-    await ensureAdmin(context.supabase, context.userId);
+    await ensureAdmin(context.userId);
     const { data: job, error } = await supabaseAdmin.from("crawl_jobs").select("*").eq("id", data.jobId).single();
     if (error) throw new Error(error.message);
     return { job };
@@ -304,7 +304,7 @@ export const getCrawlJob = createServerFn({ method: "POST" })
 export const listCrawlJobs = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await ensureAdmin(context.supabase, context.userId);
+    await ensureAdmin(context.userId);
     const { data, error } = await supabaseAdmin
       .from("crawl_jobs")
       .select("*")
@@ -317,7 +317,7 @@ export const listCrawlJobs = createServerFn({ method: "GET" })
 export const scrapedStats = createServerFn({ method: "GET" })
   .middleware([requireSupabaseAuth])
   .handler(async ({ context }) => {
-    await ensureAdmin(context.supabase, context.userId);
+    await ensureAdmin(context.userId);
     const { count: pages } = await supabaseAdmin.from("scraped_pages").select("*", { count: "exact", head: true });
     const { count: embedded } = await supabaseAdmin
       .from("scraped_pages")

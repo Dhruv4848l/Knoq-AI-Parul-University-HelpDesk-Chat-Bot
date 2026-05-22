@@ -13,6 +13,7 @@ import { Route as SignupRouteImport } from './routes/signup'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as LoginRouteImport } from './routes/login'
 import { Route as DocsRouteImport } from './routes/docs'
+import { Route as CacheRouteImport } from './routes/cache'
 import { Route as AppRouteImport } from './routes/app'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as IndexRouteImport } from './routes/index'
@@ -37,6 +38,11 @@ const DocsRoute = DocsRouteImport.update({
   path: '/docs',
   getParentRoute: () => rootRouteImport,
 } as any)
+const CacheRoute = CacheRouteImport.update({
+  id: '/cache',
+  path: '/cache',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const AppRoute = AppRouteImport.update({
   id: '/app',
   path: '/app',
@@ -57,6 +63,7 @@ export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/app': typeof AppRoute
+  '/cache': typeof CacheRoute
   '/docs': typeof DocsRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
@@ -66,6 +73,7 @@ export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/app': typeof AppRoute
+  '/cache': typeof CacheRoute
   '/docs': typeof DocsRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
@@ -76,6 +84,7 @@ export interface FileRoutesById {
   '/': typeof IndexRoute
   '/admin': typeof AdminRoute
   '/app': typeof AppRoute
+  '/cache': typeof CacheRoute
   '/docs': typeof DocsRoute
   '/login': typeof LoginRoute
   '/profile': typeof ProfileRoute
@@ -87,17 +96,27 @@ export interface FileRouteTypes {
     | '/'
     | '/admin'
     | '/app'
+    | '/cache'
     | '/docs'
     | '/login'
     | '/profile'
     | '/signup'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/admin' | '/app' | '/docs' | '/login' | '/profile' | '/signup'
+  to:
+    | '/'
+    | '/admin'
+    | '/app'
+    | '/cache'
+    | '/docs'
+    | '/login'
+    | '/profile'
+    | '/signup'
   id:
     | '__root__'
     | '/'
     | '/admin'
     | '/app'
+    | '/cache'
     | '/docs'
     | '/login'
     | '/profile'
@@ -108,6 +127,7 @@ export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   AdminRoute: typeof AdminRoute
   AppRoute: typeof AppRoute
+  CacheRoute: typeof CacheRoute
   DocsRoute: typeof DocsRoute
   LoginRoute: typeof LoginRoute
   ProfileRoute: typeof ProfileRoute
@@ -144,6 +164,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DocsRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/cache': {
+      id: '/cache'
+      path: '/cache'
+      fullPath: '/cache'
+      preLoaderRoute: typeof CacheRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/app': {
       id: '/app'
       path: '/app'
@@ -172,6 +199,7 @@ const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   AdminRoute: AdminRoute,
   AppRoute: AppRoute,
+  CacheRoute: CacheRoute,
   DocsRoute: DocsRoute,
   LoginRoute: LoginRoute,
   ProfileRoute: ProfileRoute,

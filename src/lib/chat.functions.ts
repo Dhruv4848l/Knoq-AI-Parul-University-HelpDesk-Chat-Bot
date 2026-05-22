@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { ragSearch } from "./crawl.functions";
 
 // ─── Free mode: basic in-memory FAQ only, no logging, no AI ───────────────
 const FREE_FAQS = [

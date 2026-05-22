@@ -124,26 +124,35 @@ export type Database = {
       }
       profiles: {
         Row: {
+          branch: string | null
           created_at: string
           email: string | null
           full_name: string | null
+          hostel: string | null
           id: string
+          semester: string | null
           updated_at: string
           user_id: string
         }
         Insert: {
+          branch?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
+          hostel?: string | null
           id?: string
+          semester?: string | null
           updated_at?: string
           user_id: string
         }
         Update: {
+          branch?: string | null
           created_at?: string
           email?: string | null
           full_name?: string | null
+          hostel?: string | null
           id?: string
+          semester?: string | null
           updated_at?: string
           user_id?: string
         }

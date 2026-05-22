@@ -18,8 +18,8 @@ function aiKey() {
   return k;
 }
 
-async function ensureAdmin(supabase: ReturnType<typeof requireSupabaseAuth> extends never ? never : any, userId: string) {
-  const { data, error } = await supabase
+async function ensureAdmin(userId: string) {
+  const { data, error } = await supabaseAdmin
     .from("user_roles")
     .select("role")
     .eq("user_id", userId)

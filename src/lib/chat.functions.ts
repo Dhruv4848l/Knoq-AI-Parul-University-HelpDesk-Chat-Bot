@@ -48,6 +48,13 @@ export const chatAuthed = createServerFn({ method: "POST" })
     const { supabase, userId } = context;
     const last = data.messages[data.messages.length - 1].content;
 
+    // Load student preferences for personalization
+    const { data: profile } = await supabase
+      .from("profiles")
+      .select("full_name, branch, semester, hostel")
+      .eq("user_id", userId)
+      .maybeSingle();
+
     // 1) Try DB FAQ keyword match
     const { data: faqs } = await supabase.from("faqs").select("answer, keywords, question");
     const q = last.toLowerCase();
@@ -66,12 +73,21 @@ export const chatAuthed = createServerFn({ method: "POST" })
         .map((m, i) => `[Source ${i + 1}] ${m.title ?? m.url}\nURL: ${m.url}\n${m.markdown.slice(0, 2000)}`)
         .join("\n\n---\n\n");
 
+      const prefLines: string[] = [];
+      if (profile?.full_name) prefLines.push(`Name: ${profile.full_name}`);
+      if (profile?.branch) prefLines.push(`Program / Branch: ${profile.branch}`);
+      if (profile?.semester) prefLines.push(`Current semester: ${profile.semester}`);
+      if (profile?.hostel) prefLines.push(`Hostel block: ${profile.hostel}`);
+      const studentBlock = prefLines.length
+        ? `\n\nSTUDENT PROFILE (use to personalize: tailor exam dates to their semester, scope hostel info to their block, address them by first name occasionally):\n${prefLines.join("\n")}`
+        : "";
+
       const apiKey = process.env.LOVABLE_API_KEY;
       if (!apiKey) {
         reply = "AI service is not configured. Please contact the admin.";
         source = "error";
       } else {
-        const sys = `You are CampusBot, the official AI helpdesk for Parul University. Answer using ONLY the SOURCES below when relevant. Cite source numbers like [1], [2]. Be concise (3-6 sentences), warm, and factual. If the sources don't cover the question, answer from general knowledge of Parul University and say "(general info)". If outside campus scope, politely redirect.
+        const sys = `You are CampusBot, the official AI helpdesk for Parul University. Answer using ONLY the SOURCES below when relevant. Cite source numbers like [1], [2]. Be concise (3-6 sentences), warm, and factual. If the sources don't cover the question, answer from general knowledge of Parul University and say "(general info)". If outside campus scope, politely redirect.${studentBlock}
 
 SOURCES:
 ${context_blocks || "(no indexed pages yet — answer from general knowledge of Parul University)"}`;

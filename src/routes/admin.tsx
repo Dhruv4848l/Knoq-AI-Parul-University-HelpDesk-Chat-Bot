@@ -6,6 +6,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Nav } from "@/components/Nav";
 import { useAuth } from "@/lib/auth";
 import { upsertFaq, deleteFaq, listChatLogs } from "@/lib/chat.functions";
+import { SiteCrawler } from "@/components/SiteCrawler";
 import { Plus, Pencil, Trash2, BookMarked, MessagesSquare, X } from "lucide-react";
 
 export const Route = createFileRoute("/admin")({

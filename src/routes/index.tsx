@@ -106,15 +106,21 @@ function Home() {
           <div>
             <h3 className="text-xs uppercase tracking-wider text-primary mb-4">✓ Live now</h3>
             <ul className="space-y-3">
-              {SHIPPED.map((s) => (
-                <li key={s.title} className="flex gap-3 p-4 rounded-xl border bg-card">
-                  <s.icon className="size-5 text-primary shrink-0 mt-0.5" />
-                  <div>
-                    <p className="font-medium text-sm">{s.title}</p>
-                    <p className="text-xs text-muted-foreground mt-0.5">{s.desc}</p>
-                  </div>
-                </li>
-              ))}
+              {SHIPPED.map((s) => {
+                const Wrapper: any = s.to ? Link : "div";
+                const wrapperProps = s.to ? { to: s.to } : {};
+                return (
+                  <li key={s.title}>
+                    <Wrapper {...wrapperProps} className={`flex gap-3 p-4 rounded-xl border bg-card ${s.to ? "hover:bg-accent transition" : ""}`}>
+                      <s.icon className="size-5 text-primary shrink-0 mt-0.5" />
+                      <div>
+                        <p className="font-medium text-sm">{s.title}{s.to && <span className="text-muted-foreground"> →</span>}</p>
+                        <p className="text-xs text-muted-foreground mt-0.5">{s.desc}</p>
+                      </div>
+                    </Wrapper>
+                  </li>
+                );
+              })}
             </ul>
           </div>
           <div>
@@ -142,19 +148,20 @@ function Home() {
   );
 }
 
-const SHIPPED = [
+const SHIPPED: { icon: typeof MessageSquare; title: string; desc: string; to?: string }[] = [
   { icon: Lock, title: "Domain-restricted Auth", desc: "Email/password login limited to @paruluniversity.ac.in. Free guest mode for everyone else." },
   { icon: Database, title: "Cloud Knowledge Base", desc: "Admin-managed FAQ table with full CRUD; chatbot searches it before falling back to AI." },
-  { icon: Users, title: "Admin Dashboard", desc: "Role-protected dashboard to manage FAQs and view recent conversations." },
+  { icon: Users, title: "Admin Dashboard", desc: "Role-protected dashboard to manage FAQs and view recent conversations.", to: "/admin" },
   { icon: Sparkles, title: "AI Fallback (Gemini)", desc: "Unknown questions route to Lovable AI for a friendly, context-aware answer." },
+  { icon: Sparkles, title: "Vector Search over college docs", desc: "Embed handbooks, circulars, timetables so the bot cites exact passages.", to: "/docs" },
+  { icon: Users, title: "Per-program personalization", desc: "Answers tailored to a student's branch, semester, and hostel block.", to: "/profile" },
+  { icon: Database, title: "Redis cache layer", desc: "Cache hot FAQ lookups and AI completions to drop latency below 100ms.", to: "/cache" },
 ];
 
-const FUTURE = [
-  { icon: Sparkles, title: "Vector Search over college docs", desc: "Embed handbooks, circulars, timetables so the bot cites exact passages." },
-  { icon: Users, title: "Per-program personalization", desc: "Answers tailored to a student's branch, semester, and hostel block." },
-  { icon: Database, title: "Redis cache layer", desc: "Cache hot FAQ lookups and AI completions to drop latency below 100ms." },
+const FUTURE: { icon: typeof MessageSquare; title: string; desc: string }[] = [
   { icon: Workflow, title: "Email & push notifications", desc: "Notify students about exam dates, fee deadlines, and admin announcements." },
 ];
+
 
 function Feature({ icon: Icon, title, desc }: { icon: typeof MessageSquare; title: string; desc: string }) {
   return (

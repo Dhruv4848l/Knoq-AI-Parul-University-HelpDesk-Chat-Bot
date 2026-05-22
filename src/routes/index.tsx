@@ -148,19 +148,20 @@ function Home() {
   );
 }
 
-const SHIPPED = [
+const SHIPPED: { icon: typeof MessageSquare; title: string; desc: string; to?: string }[] = [
   { icon: Lock, title: "Domain-restricted Auth", desc: "Email/password login limited to @paruluniversity.ac.in. Free guest mode for everyone else." },
   { icon: Database, title: "Cloud Knowledge Base", desc: "Admin-managed FAQ table with full CRUD; chatbot searches it before falling back to AI." },
-  { icon: Users, title: "Admin Dashboard", desc: "Role-protected dashboard to manage FAQs and view recent conversations." },
+  { icon: Users, title: "Admin Dashboard", desc: "Role-protected dashboard to manage FAQs and view recent conversations.", to: "/admin" },
   { icon: Sparkles, title: "AI Fallback (Gemini)", desc: "Unknown questions route to Lovable AI for a friendly, context-aware answer." },
+  { icon: Sparkles, title: "Vector Search over college docs", desc: "Embed handbooks, circulars, timetables so the bot cites exact passages.", to: "/docs" },
+  { icon: Users, title: "Per-program personalization", desc: "Answers tailored to a student's branch, semester, and hostel block.", to: "/profile" },
+  { icon: Database, title: "Redis cache layer", desc: "Cache hot FAQ lookups and AI completions to drop latency below 100ms.", to: "/cache" },
 ];
 
-const FUTURE = [
-  { icon: Sparkles, title: "Vector Search over college docs", desc: "Embed handbooks, circulars, timetables so the bot cites exact passages." },
-  { icon: Users, title: "Per-program personalization", desc: "Answers tailored to a student's branch, semester, and hostel block." },
-  { icon: Database, title: "Redis cache layer", desc: "Cache hot FAQ lookups and AI completions to drop latency below 100ms." },
+const FUTURE: { icon: typeof MessageSquare; title: string; desc: string }[] = [
   { icon: Workflow, title: "Email & push notifications", desc: "Notify students about exam dates, fee deadlines, and admin announcements." },
 ];
+
 
 function Feature({ icon: Icon, title, desc }: { icon: typeof MessageSquare; title: string; desc: string }) {
   return (

@@ -27,7 +27,7 @@ function DocsPage() {
           Search across <span className="italic text-primary">college documents</span>
         </h1>
         <p className="text-muted-foreground max-w-2xl mb-8">
-          Upload handbooks, circulars, and timetables. CampusBot embeds them and cites the exact passage when students ask.
+          The full paruluniversity.ac.in website is now crawlable from the admin dashboard. Every page is stored, embedded with Gemini, and used as RAG context when authenticated students chat with CampusBot.
         </p>
 
         <div className="rounded-2xl border bg-card p-5 mb-6" style={{ boxShadow: "var(--shadow-elegant)" }}>

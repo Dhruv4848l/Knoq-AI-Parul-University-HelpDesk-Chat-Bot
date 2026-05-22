@@ -64,6 +64,7 @@ role: admin</pre>
           <h1 className="text-4xl">Manage CampusBot</h1>
         </header>
         <div className="grid lg:grid-cols-2 gap-8">
+          <SiteCrawler />
           <FAQManager />
           <ChatLogs />
         </div>

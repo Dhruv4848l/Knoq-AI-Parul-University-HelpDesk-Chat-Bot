@@ -41,6 +41,54 @@ export type Database = {
         }
         Relationships: []
       }
+      crawl_jobs: {
+        Row: {
+          error: string | null
+          faqs_generated: number
+          firecrawl_job_id: string | null
+          id: string
+          next_cursor: string | null
+          pages_discovered: number
+          pages_embedded: number
+          pages_scraped: number
+          source_url: string
+          started_at: string
+          started_by: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          error?: string | null
+          faqs_generated?: number
+          firecrawl_job_id?: string | null
+          id?: string
+          next_cursor?: string | null
+          pages_discovered?: number
+          pages_embedded?: number
+          pages_scraped?: number
+          source_url: string
+          started_at?: string
+          started_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          error?: string | null
+          faqs_generated?: number
+          firecrawl_job_id?: string | null
+          id?: string
+          next_cursor?: string | null
+          pages_discovered?: number
+          pages_embedded?: number
+          pages_scraped?: number
+          source_url?: string
+          started_at?: string
+          started_by?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       faqs: {
         Row: {
           answer: string
@@ -101,6 +149,45 @@ export type Database = {
         }
         Relationships: []
       }
+      scraped_pages: {
+        Row: {
+          content_hash: string
+          description: string | null
+          embedding: string | null
+          id: string
+          markdown: string
+          scraped_at: string
+          title: string | null
+          token_count: number | null
+          updated_at: string
+          url: string
+        }
+        Insert: {
+          content_hash: string
+          description?: string | null
+          embedding?: string | null
+          id?: string
+          markdown: string
+          scraped_at?: string
+          title?: string | null
+          token_count?: number | null
+          updated_at?: string
+          url: string
+        }
+        Update: {
+          content_hash?: string
+          description?: string | null
+          embedding?: string | null
+          id?: string
+          markdown?: string
+          scraped_at?: string
+          title?: string | null
+          token_count?: number | null
+          updated_at?: string
+          url?: string
+        }
+        Relationships: []
+      }
       user_roles: {
         Row: {
           created_at: string
@@ -133,6 +220,16 @@ export type Database = {
           _user_id: string
         }
         Returns: boolean
+      }
+      match_scraped_pages: {
+        Args: { match_count?: number; query_embedding: string }
+        Returns: {
+          id: string
+          markdown: string
+          similarity: number
+          title: string
+          url: string
+        }[]
       }
     }
     Enums: {

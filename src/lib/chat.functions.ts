@@ -1,6 +1,7 @@
 import { createServerFn } from "@tanstack/react-start";
 import { z } from "zod";
 import { requireSupabaseAuth } from "@/integrations/supabase/auth-middleware";
+import { ragSearch } from "./crawl.functions";
 
 // ─── Free mode: basic in-memory FAQ only, no logging, no AI ───────────────
 const FREE_FAQS = [
@@ -59,27 +60,30 @@ export const chatAuthed = createServerFn({ method: "POST" })
       reply = faqHit.answer;
       source = "faq";
     } else {
-      // 2) AI fallback
+      // 2) RAG: pull top scraped pages
+      const matches = await ragSearch(last, 4);
+      const context_blocks = matches
+        .map((m, i) => `[Source ${i + 1}] ${m.title ?? m.url}\nURL: ${m.url}\n${m.markdown.slice(0, 2000)}`)
+        .join("\n\n---\n\n");
+
       const apiKey = process.env.LOVABLE_API_KEY;
       if (!apiKey) {
         reply = "AI service is not configured. Please contact the admin.";
         source = "error";
       } else {
+        const sys = `You are CampusBot, the official AI helpdesk for Parul University. Answer using ONLY the SOURCES below when relevant. Cite source numbers like [1], [2]. Be concise (3-6 sentences), warm, and factual. If the sources don't cover the question, answer from general knowledge of Parul University and say "(general info)". If outside campus scope, politely redirect.
+
+SOURCES:
+${context_blocks || "(no indexed pages yet — answer from general knowledge of Parul University)"}`;
+
         const res = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: { "Content-Type": "application/json", Authorization: `Bearer ${apiKey}` },
           body: JSON.stringify({
             model: "google/gemini-2.5-flash",
-            messages: [
-              {
-                role: "system",
-                content:
-                  "You are CampusBot, the official AI helpdesk for Parul University. Answer student queries about admissions, exams, fees, hostel, library, scholarships, placements and campus life. Be concise (3-5 sentences), warm, and factual. If a question is outside campus scope, politely redirect.",
-              },
-              ...data.messages,
-            ],
+            messages: [{ role: "system", content: sys }, ...data.messages],
             temperature: 0.3,
-            max_tokens: 400,
+            max_tokens: 500,
           }),
         });
         if (!res.ok) {

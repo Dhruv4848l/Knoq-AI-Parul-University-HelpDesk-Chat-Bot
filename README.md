@@ -54,3 +54,38 @@ Backend API will run at `http://localhost:5000`
 If you are migrating from the old Supabase PostgreSQL database:
 1. Ensure `DATABASE_URL` (Supabase connection string) is set in your environment.
 2. Run `node scripts/migrate-data.js` to transfer users, FAQs, chat logs, and vector embeddings to MongoDB.
+
+## Webpage Screenshots
+
+### 🏠 Landing Page
+Beautiful, modern dark-themed landing page showcasing Knoq-AI.
+![Landing Page](readme-assets/home.png)
+
+### 💬 Student Chat Dashboard
+Full-featured chat dashboard where students query AI and get instant responses with citation cards, standard templates, and maps.
+![Chat Dashboard](readme-assets/app.png)
+
+### 🛠️ Admin Panel & Web Crawler
+A comprehensive system for crawling university subdomains, viewing crawled vectors, and managing cached FAQs.
+![Admin Panel](readme-assets/admin.png)
+
+### 📈 Performance Cache Dashboard
+Visualize cached FAQ lookups dropping latency down to <50ms while saving API token costs.
+![Cache Dashboard](readme-assets/cache.png)
+
+### 📖 RAG Architecture Flow & Docs
+Interactive vector search flow, RAG pipeline explanation, and campus guides.
+![Docs](readme-assets/docs.png)
+
+### 👤 Profile Settings
+User personalization settings for Parul University student accounts.
+![Profile Settings](readme-assets/profile.png)
+
+### 🔑 Authentication (Sign In & Sign Up)
+Secure login & signup restricted to `@paruluniversity.ac.in` domain accounts.
+<table>
+  <tr>
+    <td><img src="readme-assets/login.png" alt="Login" width="400"/></td>
+    <td><img src="readme-assets/signup.png" alt="Signup" width="400"/></td>
+  </tr>
+</table>

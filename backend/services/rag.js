@@ -37,9 +37,14 @@ export async function ragSearch(query, topK = 4) {
     
     console.warn("Using fallback text search for RAG since Atlas Vector Search might not be configured yet.");
     
-    // Create a regex from the query words for a simple fallback search
-    const words = query.split(/\s+/).filter(w => w.length > 3).slice(0, 5);
-    const regexQuery = words.length > 0 ? words.join("|") : query;
+    // Escape special regex characters to prevent MongoDB syntax errors on special chars like ? ( ) [ ] etc.
+    const escapeRegex = (str) => str.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    const escapedQuery = escapeRegex(query);
+    const words = query.split(/\s+/)
+      .map(w => escapeRegex(w))
+      .filter(w => w.length > 3)
+      .slice(0, 5);
+    const regexQuery = words.length > 0 ? words.join("|") : escapedQuery;
     
     const matches = await ScrapedPage.find({
       $or: [

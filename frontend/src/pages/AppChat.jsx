@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { ChatPanel } from "../components/ChatPanel";
 import { Nav } from "../components/Nav";
@@ -8,9 +8,21 @@ import { Sparkles, BookOpen, Award, Library, Wifi } from "lucide-react";
 export default function AppChat() {
   const { loading, user } = useAuth();
   const navigate = useNavigate();
+  const [history, setHistory] = useState([]);
+  const [historyLoading, setHistoryLoading] = useState(true);
+  const [selectedHistory, setSelectedHistory] = useState(null);
 
   useEffect(() => {
     if (!loading && !user) navigate("/login");
+    if (!loading && user) {
+      import("../api/client").then(module => {
+        const api = module.default;
+        api.get('/chat/history')
+          .then(res => setHistory(res.data.logs || []))
+          .catch(err => console.error("History fetch error", err))
+          .finally(() => setHistoryLoading(false));
+      });
+    }
   }, [loading, user, navigate]);
 
   return (
@@ -31,46 +43,68 @@ export default function AppChat() {
 
         {user && (
           <div style={{ display: 'flex', gap: '2rem', flexWrap: 'wrap', alignItems: 'stretch' }}>
-            {/* Left panel - Helper options */}
-            <div className="glass-card" style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', justifyContent: 'space-between', padding: '2rem' }}>
-              <div>
+            {/* Left panel - Helper options & History */}
+            <div className="glass-card" style={{ flex: '1 1 300px', display: 'flex', flexDirection: 'column', padding: '1.5rem', maxHeight: 600, overflowY: 'auto' }}>
+              
+              <div style={{ marginBottom: 24 }}>
                 <h3 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', marginBottom: 8, display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Sparkles size={16} style={{ color: 'var(--teal)' }} /> Quick Assist
+                  <BookOpen size={16} style={{ color: 'var(--v2)' }} /> Chat History
                 </h3>
-                <p style={{ fontSize: 13, color: 'var(--text2)', marginBottom: 20, lineHeight: 1.6 }}>
-                  Click any of the frequent inquiries below to automatically load the question or read about standard campus procedures.
+                <p style={{ fontSize: 12, color: 'var(--text2)', marginBottom: 16 }}>
+                  View your previous searches (Read-Only).
                 </p>
-                <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+                  {historyLoading ? (
+                    <p style={{ fontSize: 12, color: 'var(--text3)' }}>Loading history...</p>
+                  ) : history.length === 0 ? (
+                    <p style={{ fontSize: 12, color: 'var(--text3)' }}>No previous chats.</p>
+                  ) : (
+                    history.map(log => (
+                      <div key={log._id} className="history-item" style={{ 
+                        padding: '10px 12px', 
+                        background: selectedHistory === log._id ? 'rgba(124,92,252,0.1)' : 'var(--surface)', 
+                        border: `0.5px solid ${selectedHistory === log._id ? 'var(--v2)' : 'var(--border)'}`, 
+                        borderRadius: 8, 
+                        cursor: 'pointer',
+                        transition: 'all 0.2s'
+                      }} onClick={() => setSelectedHistory(selectedHistory === log._id ? null : log._id)}>
+                        <div style={{ fontSize: 12, fontWeight: 500, color: 'var(--text)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
+                          Q: {log.question}
+                        </div>
+                        {selectedHistory === log._id && (
+                          <div style={{ marginTop: 8, paddingTop: 8, borderTop: '0.5px solid var(--border)', fontSize: 11, color: 'var(--text2)', lineHeight: 1.5 }}>
+                            <strong>A:</strong> {log.answer}
+                            <div style={{ marginTop: 6, fontSize: 9, color: 'var(--text3)' }}>
+                              {new Date(log.createdAt).toLocaleString()} • {log.source}
+                            </div>
+                          </div>
+                        )}
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              <div>
+                <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', marginBottom: 12, display: 'flex', alignItems: 'center', gap: 8 }}>
+                  <Sparkles size={14} style={{ color: 'var(--teal)' }} /> Quick Assist
+                </h3>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
                   {[
                     { q: "What is the policy for exam re-evaluation?", icon: BookOpen },
-                    { q: "How can I apply for merit scholarships?", icon: Award },
-                    { q: "What are the timings and rules of the central library?", icon: Library },
-                    { q: "How to register for campus hostel Wi-Fi?", icon: Wifi }
+                    { q: "How can I apply for merit scholarships?", icon: Award }
                   ].map(item => (
                     <button
                       key={item.q}
                       className="btn-outline"
-                      style={{
-                        padding: '10px 16px',
-                        borderRadius: 12,
-                        fontSize: 12,
-                        textAlign: 'left',
-                        justifyContent: 'flex-start',
-                        width: '100%',
-                        lineHeight: 1.4
-                      }}
-                      onClick={() => {
-                        window.dispatchEvent(new CustomEvent("trigger-chat-query", { detail: item.q }));
-                      }}
+                      style={{ padding: '8px 12px', borderRadius: 8, fontSize: 11, textAlign: 'left', justifyContent: 'flex-start', width: '100%', lineHeight: 1.3 }}
+                      onClick={() => window.dispatchEvent(new CustomEvent("trigger-chat-query", { detail: item.q }))}
                     >
-                      <item.icon size={13} style={{ flexShrink: 0, color: 'var(--v2)' }} />
+                      <item.icon size={12} style={{ flexShrink: 0, color: 'var(--v2)' }} />
                       <span style={{ textOverflow: 'ellipsis', overflow: 'hidden', whiteSpace: 'nowrap' }}>{item.q}</span>
                     </button>
                   ))}
                 </div>
-              </div>
-              <div style={{ marginTop: 24, borderTop: '0.5px solid var(--border)', paddingTop: 16, fontSize: 12, color: 'var(--text3)' }}>
-                💡 Type natural questions like "where is admin block?" or "fee due date B.Tech IT".
               </div>
             </div>
 

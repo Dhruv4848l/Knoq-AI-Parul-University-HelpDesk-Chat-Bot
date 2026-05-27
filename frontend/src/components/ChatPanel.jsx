@@ -153,7 +153,7 @@ export function ChatPanel({ mode = "free", height = 520 }) {
       if (mode === "authed") {
         res = await api.post('/chat/authed', { messages: next.map(m => ({ role: m.role, content: m.content })) });
       } else {
-        res = await api.post('/chat/free', { question: trimmed });
+        res = await api.post('/chat/free', { messages: next.map(m => ({ role: m.role, content: m.content })) });
       }
       setMessages(m => [...m, { 
         role: "assistant", 
@@ -245,9 +245,19 @@ export function ChatPanel({ mode = "free", height = 520 }) {
                   <BookMarked size={10} /> from FAQ
                 </div>
               )}
-              {m.source === "ai" && (
+              {(m.source === "ai" || m.source === "ai (public data)") && (
                 <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, opacity: 0.7, color: 'var(--v2)' }}>
                   <Sparkles size={10} /> AI generated
+                </div>
+              )}
+              {m.source === "datasheet" && (
+                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, opacity: 0.7, color: 'var(--teal)' }}>
+                  <FileText size={10} /> from University Datasheet
+                </div>
+              )}
+              {m.source === "dataset" && (
+                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, opacity: 0.7, color: 'var(--teal)' }}>
+                  <MapPin size={10} /> from Campus Dataset
                 </div>
               )}
               {m.source === "cache" && (
@@ -255,7 +265,7 @@ export function ChatPanel({ mode = "free", height = 520 }) {
                   <Sparkles size={10} /> cached answer
                 </div>
               )}
-              {m.source === "map" && (
+              {(m.source === "map") && (
                 <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, opacity: 0.7, color: 'var(--teal)' }}>
                   <BookMarked size={10} /> campus navigation
                 </div>

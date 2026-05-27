@@ -6,63 +6,56 @@ dotenv.config();
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "dummy_key");
 
 export async function chatCompletion(messages, systemPrompt, temperature = 0.3, maxTokens = 500) {
-  try {
-    if (!process.env.GEMINI_API_KEY) {
-      if (process.env.DEEPSEEK_API_KEY) {
-        console.log("[AI Routing] GEMINI_API_KEY is not set. Routing directly to DeepSeek...");
-        return await callDeepSeek(messages, systemPrompt, temperature, maxTokens);
-      }
-      console.warn("Neither GEMINI_API_KEY nor DEEPSEEK_API_KEY is set. Returning error response.");
-      throw new Error("AI service is not configured. Please contact the admin.");
-    }
-
-    const model = genAI.getGenerativeModel({
-      model: "gemini-2.5-flash",
-      systemInstruction: systemPrompt,
-      generationConfig: {
-        temperature: temperature,
-        maxOutputTokens: maxTokens,
-      },
-    });
-
-    // Convert OpenAI-style messages to Gemini format
-    let history = messages.map(msg => ({
-      role: msg.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: msg.content }],
-    }));
-
-    // The last message is the current prompt, remove it from history
-    const currentMessage = history.pop().parts[0].text;
-
-    // Gemini API requires chat history to start with a 'user' message.
-    // We shift off any leading 'model' messages (like the welcome greeting) to ensure compliance.
-    while (history.length > 0 && history[0].role === 'model') {
-      history.shift();
-    }
-    
-    // Create a chat session with the history
-    const chat = model.startChat({ history });
-
-    // Send the current message
-    const result = await chat.sendMessage(currentMessage);
-    const response = result.response;
-    
-    return response.text();
-  } catch (error) {
-    console.error("Gemini API Error:", error);
-    
-    if (process.env.DEEPSEEK_API_KEY) {
-      try {
-        console.log(`[DeepSeek Fallback] Attempting fallback due to Gemini error: ${error.message || error}`);
-        return await callDeepSeek(messages, systemPrompt, temperature, maxTokens);
-      } catch (deepseekError) {
-        console.error("DeepSeek Fallback Error:", deepseekError);
-        throw new Error(`AI Service Unavailable. Gemini Error: ${error.message || error}. DeepSeek Error: ${deepseekError.message || deepseekError}`);
-      }
-    }
-    
-    throw error;
+  if (!process.env.GEMINI_API_KEY) {
+    throw new Error("AI service is not configured. Please contact the admin.");
   }
+
+  // gemini-2.0-flash has higher free-tier quota (15 RPM, 1500 RPD)
+  // gemini-2.5-flash is smarter but lower quota (10 RPM, 20 RPD free)
+  const models = ["gemini-2.0-flash", "gemini-2.5-flash"];
+
+  let history = messages.map(msg => ({
+    role: msg.role === 'assistant' ? 'model' : 'user',
+    parts: [{ text: msg.content }],
+  }));
+  const currentMessage = history.pop().parts[0].text;
+  while (history.length > 0 && history[0].role === 'model') {
+    history.shift();
+  }
+
+  const sleep = (ms) => new Promise(r => setTimeout(r, ms));
+
+  let lastError = null;
+  for (const modelName of models) {
+    // Try each model up to 2 times (with a short delay on 429)
+    for (let attempt = 0; attempt < 2; attempt++) {
+      try {
+        if (attempt > 0) {
+          console.log(`[AI] Retry attempt ${attempt + 1} for ${modelName} after 5s delay...`);
+          await sleep(5000);
+        }
+        console.log(`[AI] Calling ${modelName}...`);
+        const model = genAI.getGenerativeModel({
+          model: modelName,
+          systemInstruction: systemPrompt,
+          generationConfig: { temperature, maxOutputTokens: maxTokens },
+        });
+
+        const chat = model.startChat({ history: [...history] });
+        const result = await chat.sendMessage(currentMessage);
+        return result.response.text();
+      } catch (err) {
+        lastError = err;
+        const msg = err.message || '';
+        const isRetryable = msg.includes("503") || msg.includes("429") || msg.includes("overloaded") || msg.includes("high demand") || msg.includes("quota") || msg.includes("rate");
+        console.error(`[AI] ${modelName} (attempt ${attempt + 1}) failed: ${msg.substring(0, 150)}`);
+        if (!isRetryable) throw err;
+      }
+    }
+    console.log(`[AI] ${modelName} exhausted. Trying next model...`);
+  }
+
+  throw lastError || new Error("All AI models are temporarily unavailable. Please try again.");
 }
 
 export async function embedTexts(texts) {

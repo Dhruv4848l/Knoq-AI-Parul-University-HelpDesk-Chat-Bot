@@ -26,6 +26,10 @@ const faqSchema = new mongoose.Schema(
       ref: "User",
       default: null,
     },
+    isPublic: {
+      type: Boolean,
+      default: false,
+    },
   },
   { timestamps: true }
 );

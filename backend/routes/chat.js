@@ -2,6 +2,7 @@ import express from "express";
 import z from "zod";
 import Faq from "../models/Faq.js";
 import ChatLog from "../models/ChatLog.js";
+import CampusRoute from "../models/CampusRoute.js";
 import { requireAuth } from "../middleware/auth.js";
 import { ragSearch } from "../services/rag.js";
 import { chatCompletion } from "../services/gemini.js";
@@ -10,46 +11,109 @@ import { resolveDistance } from "../services/googleMaps.js";
 
 const router = express.Router();
 
-// ─── Free mode: basic in-memory FAQ only, no logging, no AI ───────────────
-const FREE_FAQS = [
-  { k: ["exam", "exams", "schedule", "datesheet"], a: "End-semester exams begin Dec 5, 2026. The full datesheet is published on the Exam Cell board and student portal one week before exams start." },
-  { k: ["hostel", "accommodation", "rent"], a: "Annual hostel fee is ₹68,000 (shared) or ₹92,000 (single). Includes mess, electricity, and Wi-Fi." },
-  { k: ["admission", "deadline", "apply"], a: "UG admissions close July 15. PG admissions close August 10. Late applications attract a ₹2,000 fee until July 25." },
-  { k: ["library", "hours", "timings"], a: "Central Library: 8 AM – 11 PM (Mon–Sat), 10 AM – 6 PM (Sun). 24/7 during exam weeks." },
-  { k: ["placement", "job", "recruitment"], a: "Placement season starts Aug 20. Register on the T&P portal and complete pre-placement training." },
-  { k: ["fee", "fees"], a: "For specific fee breakdowns, please sign in with your @paruluniversity.ac.in account for detailed answers." },
-];
-
-function findFree(query) {
-  const q = query.toLowerCase();
-  const hit = FREE_FAQS.find((f) => f.k.some((kw) => q.includes(kw)));
-  return hit?.a ?? null;
+// ─── Fuzzy text search helper ─────────────────────────────────────────────
+// Generates a regex that tolerates 1-2 character typos by making each char
+// optional or allowing wildcards. Works for short queries like "btech" "hostle"
+function buildFuzzyTokens(query) {
+  return query
+    .toLowerCase()
+    .replace(/[^\w\s]/g, '')          // strip punctuation
+    .split(/\s+/)
+    .filter(w => w.length >= 3);      // only words ≥3 chars
 }
 
-const freeSchema = z.object({ question: z.string().min(1).max(500) });
+function scoreChunk(chunkAnswer, searchTokens) {
+  const lower = chunkAnswer.toLowerCase();
+  let score = 0;
+  for (const token of searchTokens) {
+    if (lower.includes(token)) {
+      score += 3; // exact token match
+    } else {
+      // Fuzzy: allow 1-char difference (check if removing any 1 char from 
+      // the token still matches)
+      for (let i = 0; i < token.length; i++) {
+        const fuzzy = token.slice(0, i) + token.slice(i + 1);
+        if (fuzzy.length >= 3 && lower.includes(fuzzy)) {
+          score += 1;
+          break;
+        }
+      }
+    }
+  }
+  return score;
+}
+
+// Search public FAQ chunks with fuzzy matching
+async function searchPublicData(query, limit = 5) {
+  const publicFaqs = await Faq.find({ isPublic: true }).lean();
+  const tokens = buildFuzzyTokens(query);
+  if (tokens.length === 0) return [];
+
+  const scored = publicFaqs
+    .map(f => ({ ...f, score: scoreChunk(f.answer + ' ' + f.question, tokens) }))
+    .filter(f => f.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, limit);
+
+  return scored;
+}
+
+// ─── Free mode ────────────────────────────────────────────────────────────
+
+const freeSchema = z.object({
+  messages: z.array(
+    z.object({ 
+      role: z.enum(["user", "assistant"]), 
+      content: z.string().min(1).max(2000) 
+    })
+  ).min(1).max(20),
+});
 
 router.post("/free", async (req, res) => {
   try {
     const data = freeSchema.parse(req.body);
-    const a = findFree(data.question);
-    
-    if (a) {
-      return res.json({ reply: a, source: "faq" });
+    const lastMessage = data.messages[data.messages.length - 1].content;
+
+    // Build combined search query from recent user messages (handles follow-ups)
+    const recentUserMsgs = data.messages
+      .filter(m => m.role === 'user')
+      .slice(-3)
+      .map(m => m.content)
+      .join(" ");
+
+    const relevantChunks = await searchPublicData(recentUserMsgs, 5);
+
+    if (relevantChunks.length > 0) {
+      const context = relevantChunks.map(c => c.answer).join("\n\n---\n\n");
+      const sysPrompt = `You are Knoq-AI, the official AI helpdesk for Parul University (free mode). Answer ONLY using the SOURCES below. Be concise (2-4 sentences), accurate, and helpful. If the user has typos, understand what they meant. If the sources don't cover the question, say "I have limited info in free mode — sign in with your @paruluniversity.ac.in email for full AI access."
+
+SOURCES:
+${context}`;
+      
+      try {
+        const reply = await chatCompletion(data.messages, sysPrompt);
+        return res.json({ reply, source: "ai (public data)" });
+      } catch (aiErr) {
+        console.error("[Free Chat] AI error:", aiErr.message);
+        return res.json({ reply: "Sorry, the AI service is temporarily unavailable. Please try again.", source: "error" });
+      }
     }
     
     return res.json({
-      reply: "I only share basic public information in free mode. Sign in with your @paruluniversity.ac.in email to ask anything about campus life and get AI-powered answers.",
+      reply: "I couldn't find specific information for that query in free mode. Sign in with your @paruluniversity.ac.in email to get full AI-powered answers with access to the complete knowledge base!",
       source: "fallback",
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });
     }
+    console.error("[Free Chat] Error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });
 
-// ─── Authed mode: DB FAQs → Gemini AI → chat_logs ────────────────────────
+// ─── Authed mode ──────────────────────────────────────────────────────────
+
 const authedSchema = z.object({
   messages: z.array(
     z.object({ 
@@ -68,172 +132,207 @@ router.post("/authed", requireAuth, async (req, res) => {
 
     let reply;
     let source;
+    let matchedSources = [];
 
-    // 1) Consult Semantic Cache first (bypasses LLM computation for repeating or highly similar queries!)
+    // 1) Semantic Cache — instant response for repeat/similar queries
     const cachedReply = await getSemanticCachedResponse(last);
     if (cachedReply) {
-      reply = cachedReply;
-      source = "cache";
-    } else {
-      // 2) Check if this is a distance or navigation query
-      const isDistanceQuery = /(distance|how far|how to reach|way from|walking time|route|location between|between.*and|and.*between|path|direction|navigate|walk to|go to|get to|suggest.*way|suggest.*path|suggest.*route|nearest|locate|where is|take me|guide me|show.*way|which way)/i.test(q);
+      // Log & return immediately
+      await ChatLog.create({ userId: user._id, question: last, answer: cachedReply, source: "cache" }).catch(() => {});
+      return res.json({ reply: cachedReply, source: "cache" });
+    }
+
+    // 2) Navigation query detection
+    const isDistanceQuery = /(distance|how far|how to reach|way from|walking time|route|location between|between.*and|and.*between|path|direction|navigate|walk to|go to|get to|suggest.*way|suggest.*path|suggest.*route|nearest|locate|where is|take me|guide me|show.*way|which way)/i.test(q);
+
+    if (isDistanceQuery) {
+      console.log(`[Chat Router] Navigation query detected: "${last}"`);
       
-      let resolvedMap = false;
+      const recentHistory = data.messages.slice(-6).map(m => `${m.role}: ${m.content}`).join("\n");
+      
+      const parsePrompt = `You are a Parul University campus location parser. Extract origin and destination from this conversation ONLY if BOTH are within PU campus (Vadodara, Gujarat, India).
 
-      if (isDistanceQuery) {
-        console.log(`[Chat Router] Navigation query detected: "${last}". Parsing landmarks via AI...`);
-        
-        // Build conversation context so follow-up queries ("suggest me a path") can reference prior messages
-        const recentHistory = data.messages.slice(-6).map(m => `${m.role}: ${m.content}`).join("\n");
-        
-        const parsePrompt = `You are a Parul University campus location parser. Extract the origin and destination from this conversation ONLY if BOTH locations are within the Parul University (PU) campus in Vadodara, Gujarat, India.
+Known PU landmarks: Admin Block, New Building (N-Block), Central Library, Engineering Block, PIT Block, PIET, Pharmacy Block, Boys Hostel, Girls Hostel, Main Gate, Management Block, PIMR, Campus Hospital, Canteen, Auditorium, Sports Ground, Computer Lab, Science Block, Arts Block, Law Block (L Block), Commerce Block, Medical Block, Dental Block, Agriculture Block, IT Block, Parking Area, Atal Bhavan, Sarojini Bhawan, Basketball Court, etc.
 
-Known PU campus landmarks include (but are not limited to): Admin Block, New Building (N-Block), Central Library, Engineering Block, PIT Block, PIET, Pharmacy Block, Boys Hostel, Girls Hostel, Main Gate, Management Block, PIMR, Campus Hospital, Canteen, Auditorium, Sports Ground, Computer Lab, Science Block, Arts Block, Law Block, Commerce Block, Medical Block, Dental Block, Agriculture Block, IT Block, Parking Area, etc.
+IMPORTANT: "L block" means "Law Block". Handle typos and abbreviations.
+The user's latest message might be a FOLLOW-UP. Check EARLIER messages for context.
 
-IMPORTANT: The user's latest message might be a FOLLOW-UP (e.g. "suggest me a path", "how do I get there?"). In that case, look at the EARLIER messages in the conversation to find the origin and destination that were discussed previously.
-
-CONVERSATION HISTORY:
+CONVERSATION:
 ${recentHistory}
 
 RULES:
-- If BOTH origin and destination are Parul University campus locations (from current OR earlier messages), return: {"origin": "...", "destination": "...", "isOnCampus": true}
-- If EITHER location is NOT on the Parul University campus (e.g. cities, external places, railway stations, airports, malls), return: {"origin": null, "destination": null, "isOnCampus": false}
-- If you CANNOT determine two specific campus locations from the conversation, return: {"origin": null, "destination": null, "isOnCampus": null}
-- Do NOT include markdown code block formatting in your output, just raw JSON.`;
+- Both locations on campus → {"origin":"...","destination":"...","isOnCampus":true}
+- Either location off campus → {"origin":null,"destination":null,"isOnCampus":false}
+- Cannot determine → {"origin":null,"destination":null,"isOnCampus":null}
+- No markdown code blocks, just raw JSON.`;
 
-        try {
-          const parserResponseText = await chatCompletion(
-            [{ role: "user", content: parsePrompt }],
-            "You are a strict Parul University campus geocoding parser. Only extract locations within PU campus. Respond only with valid JSON."
-          );
+      try {
+        const parsed = JSON.parse(
+          (await chatCompletion([{ role: "user", content: parsePrompt }], "Respond only with valid JSON."))
+            .replace(/```json/g, "").replace(/```/g, "").trim()
+        );
 
-          const cleanJsonText = parserResponseText.replace(/```json/g, "").replace(/```/g, "").trim();
-          const parsed = JSON.parse(cleanJsonText);
+        if (parsed?.isOnCampus === true && parsed.origin && parsed.destination) {
+          console.log(`[Chat Router] Landmarks: "${parsed.origin}" → "${parsed.destination}"`);
+          
+          // Flexible regex search in CampusRoute DB
+          const buildFlexRegex = (name) => {
+            const parts = name.split(/[^a-zA-Z0-9]+/).filter(Boolean);
+            return new RegExp(parts.join('.*'), 'i');
+          };
+          
+          const originRegex = buildFlexRegex(parsed.origin);
+          const destRegex = buildFlexRegex(parsed.destination);
+          
+          const localRoute = await CampusRoute.findOne({
+            $or: [
+              { fromName: originRegex, toName: destRegex },
+              { fromName: destRegex, toName: originRegex }
+            ]
+          });
 
-          if (parsed && parsed.isOnCampus === true && parsed.origin && parsed.destination) {
-            console.log(`[Chat Router] Parsed PU Campus Landmarks: "${parsed.origin}" to "${parsed.destination}"`);
+          if (localRoute) {
+            console.log("[Chat Router] Found route in local dataset.");
+            reply = `📍 **Campus Navigation**\n\nThe walking distance between **${localRoute.fromName}** and **${localRoute.toName}** is approximately **${localRoute.distanceMeters} meters**.\n\n* 🚶‍♂️ **Estimated Walk Time**: ${localRoute.walkMinutes} minutes\n* 🗺️ **Routing Provider**: Parul University Official Dataset\n\n🧭 **Walking Directions**: ${localRoute.directionNatural}\n\nHave a pleasant walk across campus! 🏫`;
+            source = "dataset";
+          } else {
+            console.log("[Chat Router] Not in local dataset. Using Google Maps.");
             const nav = await resolveDistance(parsed.origin, parsed.destination);
-            
-            // Build a Google Maps directions URL scoped to PU campus with walking mode
             const mapsOrigin = encodeURIComponent(`${parsed.origin}, Parul University, Vadodara, Gujarat, India`);
             const mapsDest = encodeURIComponent(`${parsed.destination}, Parul University, Vadodara, Gujarat, India`);
             const googleMapsLink = `https://www.google.com/maps/dir/?api=1&origin=${mapsOrigin}&destination=${mapsDest}&travelmode=walking`;
 
-            reply = `📍 **Campus Navigation**
-
-The walking distance between **${parsed.origin}** and **${parsed.destination}** on the Parul University campus is **${nav.distance}**.
-
-* 🚶‍♂️ **Estimated Walk Time**: ${nav.duration}
-* 🗺️ **Routing Provider**: ${nav.source}
-
-🧭 **Walking Directions**: Head out from **${parsed.origin}** and follow the main campus pathway towards **${parsed.destination}**. Look for campus signage boards along the route. The path is well-paved and pedestrian-friendly.
-
-🗺️ [**View Route on Google Maps →**](${googleMapsLink})
-
-Have a pleasant walk across campus! 🏫`;
-            
+            reply = `📍 **Campus Navigation**\n\nThe walking distance between **${parsed.origin}** and **${parsed.destination}** is **${nav.distance}**.\n\n* 🚶‍♂️ **Estimated Walk Time**: ${nav.duration}\n* 🗺️ **Routing Provider**: ${nav.source}\n\n🗺️ [**View Route on Google Maps →**](${googleMapsLink})\n\nHave a pleasant walk across campus! 🏫`;
             source = "map";
-            resolvedMap = true;
-
-            // Cache this navigation response semantically (fire-and-forget, non-blocking)
-            saveToSemanticCache(last, reply).catch(e => console.error('[Semantic Cache] Background save failed:', e));
-          } else if (parsed && parsed.isOnCampus === false) {
-            // User asked about non-campus locations — politely redirect
-            reply = "🚫 I can only provide walking distances and navigation details for locations **within the Parul University campus** in Vadodara. Please ask about campus buildings, hostels, blocks, or facilities and I'll be happy to help! 🏫";
-            source = "map";
-            resolvedMap = true;
           }
-          // If isOnCampus is null (couldn't determine locations), fall through to standard AI
-        } catch (parseError) {
-          console.error("[Chat Router] Distance landmark parsing failed:", parseError);
+          
+          saveToSemanticCache(last, reply).catch(() => {});
+          await ChatLog.create({ userId: user._id, question: last, answer: reply, source }).catch(() => {});
+          return res.json({ reply, source });
+
+        } else if (parsed?.isOnCampus === false) {
+          reply = "🚫 I can only provide navigation for locations **within the Parul University campus**. Please ask about campus buildings, hostels, or facilities!";
+          source = "map";
+          await ChatLog.create({ userId: user._id, question: last, answer: reply, source }).catch(() => {});
+          return res.json({ reply, source });
         }
-      }
-
-      // 3) Standard FAQ / RAG AI Flow if not a map query (or if map query extraction failed)
-      if (!resolvedMap) {
-        // Try DB FAQ keyword match
-        const faqs = await Faq.find({}, "question answer keywords").lean();
-        const faqHit = faqs.find((f) => f.keywords.some((kw) => q.includes(kw.toLowerCase())));
-
-        if (faqHit) {
-          reply = faqHit.answer;
-          source = "faq";
-        } else {
-          // RAG: pull top scraped pages
-          const matches = await ragSearch(last, 4);
-          
-          // Detect if we are using brochure results
-          const isBrochure = matches.some(m => m.url && m.url.startsWith("brochure://"));
-          
-          const context_blocks = matches
-            .map((m, i) => {
-              if (m.pageNumber) {
-                return `[Source ${i + 1}] Brochure: ${m.pdfName}, Page: ${m.pageNumber}\nContent:\n${m.markdown.substring(0, 2500)}`;
-              }
-              return `[Source ${i + 1}] Title: ${m.title ?? m.url}\nURL: ${m.url}\nContent:\n${m.markdown.substring(0, 2500)}`;
-            })
-            .join("\n\n---\n\n");
-
-          const prefLines = [];
-          if (user.fullName) prefLines.push(`Name: ${user.fullName}`);
-          if (user.branch) prefLines.push(`Program / Branch: ${user.branch}`);
-          if (user.semester) prefLines.push(`Current semester: ${user.semester}`);
-          if (user.hostel) prefLines.push(`Hostel block: ${user.hostel}`);
-          
-          const studentBlock = prefLines.length
-            ? `\n\nSTUDENT PROFILE (use to personalize: tailor exam dates to their semester, scope hostel info to their block, address them by first name occasionally):\n${prefLines.join("\n")}`
-            : "";
-
-          let sys = `You are Knoq-AI, the official AI helpdesk for Parul University. Answer using ONLY the SOURCES below when relevant. Cite source numbers like [1], [2]. Be concise (3-6 sentences), warm, and factual. If the sources don't cover the question, answer from general knowledge of Parul University and say "(general info)". If outside campus scope, politely redirect.${studentBlock}
-
-SOURCES:
-${context_blocks || "(no indexed pages yet — answer from general knowledge of Parul University)"}`;
-
-          if (isBrochure) {
-            sys = `You are Knoq-AI, the official AI helpdesk for Parul University. Answer using ONLY the Parul University Brochure sources below. You MUST answer using the brochure information. 
-IMPORTANT: When you mention information from a source, you MUST cite the exact page number(s) in your text using the format "[Page X]" (e.g. "[Page 5]" or "[Page 12, Page 13]"). Do NOT make up page numbers. Be concise (3-6 sentences), professional, warm, and highly factual. If the brochure data does not cover the question, politely say that you cannot find that information in the current brochure. ${studentBlock}
-
-SOURCES:
-${context_blocks}`;
-          }
-
-          try {
-            reply = await chatCompletion(data.messages, sys);
-            source = isBrochure ? "brochure" : "ai";
-            
-            // Save successful AI generation to semantic cache (fire-and-forget, non-blocking)
-            saveToSemanticCache(last, reply).catch(e => console.error('[Semantic Cache] Background save failed:', e));
-          } catch (err) {
-            reply = err.message || "Sorry, I couldn't reach the AI service.";
-            source = "error";
-          }
-          
-          // 4) Log Chat Transaction
-          await ChatLog.create({
-            userId: user._id,
-            question: last,
-            answer: reply,
-            source
-          });
-
-          return res.json({ 
-            reply, 
-            source,
-            sources: matches.map(m => ({
-              title: m.title,
-              url: m.url,
-              pageNumber: m.pageNumber,
-              pdfName: m.pdfName
-            }))
-          });
-        }
+        // isOnCampus === null → fall through to standard AI
+      } catch (parseError) {
+        console.error("[Chat Router] Navigation parsing failed:", parseError.message);
+        // Fall through to standard AI
       }
     }
+
+    // 3) Search datasheet + FAQ database with fuzzy matching
+    const recentUserMsgs = data.messages
+      .filter(m => m.role === 'user')
+      .slice(-3)
+      .map(m => m.content)
+      .join(" ");
+
+    const datasheetHits = await searchPublicData(recentUserMsgs, 4);
+    
+    // Also try traditional FAQ keyword match
+    const allFaqs = await Faq.find({ isPublic: { $ne: true } }, "question answer keywords").lean();
+    const faqHit = allFaqs.find(f => f.keywords?.some(kw => q.includes(kw.toLowerCase())));
+
+    // 4) RAG search on scraped pages / brochure
+    const matches = await ragSearch(last, 3);
+    const isBrochure = matches.some(m => m.url?.startsWith("brochure://"));
+
+    // 5) Build combined context for AI
+    let contextBlocks = [];
+
+    // Add datasheet hits
+    if (datasheetHits.length > 0) {
+      datasheetHits.forEach((hit, i) => {
+        contextBlocks.push(`[Datasheet ${i + 1}] ${hit.answer}`);
+      });
+    }
+
+    // Add FAQ hit
+    if (faqHit) {
+      contextBlocks.push(`[FAQ] Q: ${faqHit.question}\nA: ${faqHit.answer}`);
+    }
+
+    // Add RAG hits
+    matches.forEach((m, i) => {
+      if (m.pageNumber) {
+        contextBlocks.push(`[Source ${i + 1}] Brochure: ${m.pdfName}, Page: ${m.pageNumber}\n${m.markdown.substring(0, 2000)}`);
+      } else {
+        contextBlocks.push(`[Source ${i + 1}] ${m.title || m.url}\n${m.markdown.substring(0, 2000)}`);
+      }
+    });
+
+    const allContext = contextBlocks.join("\n\n---\n\n");
+
+    // Build student profile
+    const prefLines = [];
+    if (user.fullName) prefLines.push(`Name: ${user.fullName}`);
+    if (user.branch) prefLines.push(`Program / Branch: ${user.branch}`);
+    if (user.semester) prefLines.push(`Current semester: ${user.semester}`);
+    if (user.hostel) prefLines.push(`Hostel block: ${user.hostel}`);
+    
+    const studentBlock = prefLines.length
+      ? `\n\nSTUDENT PROFILE:\n${prefLines.join("\n")}`
+      : "";
+
+    let sys;
+    if (isBrochure) {
+      sys = `You are Knoq-AI, the official AI helpdesk for Parul University. Answer using the brochure and datasheet sources below. Cite page numbers as [Page X]. Be concise (3-6 sentences), warm, factual. Handle typos gracefully — if the user wrote "btech" they mean "B.Tech", "hostle" means "hostel", "CSE" means "Computer Science & Engineering", etc.${studentBlock}
+
+SOURCES:
+${allContext || "(no data available)"}`;
+    } else {
+      sys = `You are Knoq-AI, the official AI helpdesk for Parul University. Answer using the SOURCES below. Be concise (3-6 sentences), warm, factual. Cite [Datasheet N] or [Source N] when using specific data. Handle typos gracefully — "btech" = "B.Tech", "hostle" = "hostel", "CSE" = "Computer Science & Engineering", etc. If sources don't cover the question, answer from general PU knowledge and note "(general info)".${studentBlock}
+
+SOURCES:
+${allContext || "(no indexed data — answer from general knowledge of Parul University)"}`;
+    }
+
+    try {
+      reply = await chatCompletion(data.messages, sys);
+      source = isBrochure ? "brochure" : (datasheetHits.length > 0 ? "datasheet" : "ai");
+      
+      saveToSemanticCache(last, reply).catch(() => {});
+    } catch (err) {
+      console.error("[Authed Chat] AI error:", err.message);
+      reply = "Sorry, I couldn't reach the AI service right now. Please try again in a moment.";
+      source = "error";
+    }
+    
+    // Log
+    await ChatLog.create({ userId: user._id, question: last, answer: reply, source }).catch(() => {});
+
+    matchedSources = matches.map(m => ({
+      title: m.title,
+      url: m.url,
+      pageNumber: m.pageNumber,
+      pdfName: m.pdfName
+    }));
+
+    return res.json({ reply, source, sources: matchedSources });
+
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });
     }
     console.error("Chat authed error:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
+// ─── Chat History ─────────────────────────────────────────────────────────
+router.get("/history", requireAuth, async (req, res) => {
+  try {
+    const logs = await ChatLog.find({ userId: req.user._id })
+      .sort({ createdAt: -1 })
+      .limit(50)
+      .lean();
+    
+    res.json({ logs });
+  } catch (error) {
+    console.error("Fetch chat history error:", error);
     res.status(500).json({ error: "Internal server error" });
   }
 });

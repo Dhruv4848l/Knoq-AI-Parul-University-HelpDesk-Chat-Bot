@@ -4,7 +4,7 @@ import api from "../api/client";
 import { Nav } from "../components/Nav";
 import { useAuth } from "../contexts/AuthContext";
 import { SiteCrawler } from "../components/SiteCrawler";
-import { Plus, Pencil, Trash2, BookMarked, MessagesSquare, X } from "lucide-react";
+import { Plus, Pencil, Trash2, BookMarked, MessagesSquare, X, FileUp, FileText, CloudUpload, Loader2, CheckCircle2, AlertTriangle, Sparkles } from "lucide-react";
 
 export default function Admin() {
   const { loading, user, roles } = useAuth();
@@ -59,10 +59,275 @@ export default function Admin() {
         </header>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 24 }}>
           <div style={{ gridColumn: '1 / -1' }}><SiteCrawler /></div>
+          <BrochureManager />
           <FAQManager />
           <ChatLogs />
         </div>
       </main>
+    </div>
+  );
+}
+
+function BrochureManager() {
+  const [brochure, setBrochure] = useState(null);
+  const [uploading, setUploading] = useState(false);
+  const [processing, setProcessing] = useState(false);
+  const [progress, setProgress] = useState(0);
+  const [error, setError] = useState("");
+  const [isDragOver, setIsDragOver] = useState(false);
+
+  const fetchBrochure = async () => {
+    try {
+      const res = await api.get("/admin/brochure");
+      setBrochure(res.data.active ? res.data : null);
+    } catch (e) {
+      console.error("Error fetching brochure:", e);
+    }
+  };
+
+  useEffect(() => {
+    fetchBrochure();
+  }, []);
+
+  const onDragOver = (e) => {
+    e.preventDefault();
+    setIsDragOver(true);
+  };
+
+  const onDragLeave = () => {
+    setIsDragOver(false);
+  };
+
+  const onDrop = (e) => {
+    e.preventDefault();
+    setIsDragOver(false);
+    const files = e.dataTransfer.files;
+    if (files && files.length > 0) {
+      uploadFile(files[0]);
+    }
+  };
+
+  const onFileChange = (e) => {
+    const files = e.target.files;
+    if (files && files.length > 0) {
+      uploadFile(files[0]);
+    }
+  };
+
+  const uploadFile = async (file) => {
+    if (!file) return;
+    if (file.type !== "application/pdf") {
+      setError("Please select a valid PDF brochure file.");
+      return;
+    }
+    setError("");
+    setUploading(true);
+    setProgress(0);
+
+    const formData = new FormData();
+    formData.append("file", file);
+
+    try {
+      // Step 1: Upload with progress
+      const uploadRes = await api.post("/admin/brochure/upload", formData, {
+        headers: { "Content-Type": "multipart/form-data" },
+        onUploadProgress: (progressEvent) => {
+          const percentCompleted = Math.round((progressEvent.loaded * 100) / progressEvent.total);
+          setProgress(percentCompleted);
+          if (percentCompleted === 100) {
+            setUploading(false);
+            setProcessing(true); // Switch to parsing and embedding state
+          }
+        }
+      });
+
+      setBrochure({
+        active: true,
+        pdfName: uploadRes.data.pdfName,
+        totalPages: uploadRes.data.totalPages,
+        uploadedAt: new Date()
+      });
+      alert(uploadRes.data.message || "Brochure uploaded and processed successfully!");
+    } catch (err) {
+      console.error(err);
+      setError(err.response?.data?.error || "Failed to process the PDF brochure.");
+    } finally {
+      setUploading(false);
+      setProcessing(false);
+      setProgress(0);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm("Are you sure you want to delete the active brochure? This will wipe the brochure RAG data and revert the chatbot to standard crawl data.")) return;
+    try {
+      await api.delete("/admin/brochure");
+      setBrochure(null);
+      alert("Brochure deleted successfully.");
+    } catch (e) {
+      alert("Failed to delete brochure.");
+    }
+  };
+
+  return (
+    <div className="glass-card">
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 20 }}>
+        <FileText size={18} style={{ color: 'var(--v2)' }} />
+        <h2 style={{ fontSize: 18, fontWeight: 500, color: 'var(--text)' }}>Parul University Brochure</h2>
+      </div>
+
+      {error && (
+        <div style={{
+          background: 'rgba(255,107,107,0.1)',
+          border: '0.5px solid rgba(255,107,107,0.2)',
+          borderRadius: 'var(--r)',
+          padding: 12,
+          color: '#ff6b6b',
+          fontSize: 12,
+          marginBottom: 16,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 8
+        }}>
+          <AlertTriangle size={14} />
+          <span>{error}</span>
+        </div>
+      )}
+
+      {brochure ? (
+        <article style={{
+          border: '0.5px solid var(--border)',
+          borderRadius: 'var(--r)',
+          padding: 20,
+          background: 'var(--surface2)',
+          display: 'flex',
+          flexDirection: 'column',
+          gap: 16
+        }}>
+          <div style={{ display: 'flex', gap: 14, alignItems: 'flex-start' }}>
+            <div style={{
+              width: 44,
+              height: 44,
+              borderRadius: 10,
+              background: 'rgba(124,92,252,0.1)',
+              display: 'grid',
+              placeItems: 'center',
+              color: 'var(--v2)',
+              border: '0.5px solid var(--border)',
+              flexShrink: 0
+            }}>
+              <FileText size={22} />
+            </div>
+            <div style={{ flex: 1, minWidth: 0 }}>
+              <h3 style={{ fontSize: 14, fontWeight: 600, color: 'var(--text)', wordBreak: 'break-all', marginBottom: 4 }}>
+                {brochure.pdfName}
+              </h3>
+              <p style={{ fontSize: 12, color: 'var(--text3)' }}>
+                Contains {brochure.totalPages} extracted pages
+              </p>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 4, marginTop: 6, fontSize: 10, color: 'var(--teal)' }}>
+                <CheckCircle2 size={12} />
+                <span>Active Brochure for RAG</span>
+              </div>
+            </div>
+          </div>
+
+          <div style={{
+            display: 'grid',
+            gridTemplateColumns: '1fr 1fr',
+            gap: 12,
+            borderTop: '0.5px solid var(--border)',
+            paddingTop: 14,
+            fontSize: 11,
+            color: 'var(--text3)'
+          }}>
+            <div>
+              <span style={{ display: 'block', fontSize: 9, textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Uploaded On</span>
+              <span style={{ fontWeight: 500, color: 'var(--text2)' }}>{new Date(brochure.uploadedAt).toLocaleString()}</span>
+            </div>
+            <div>
+              <span style={{ display: 'block', fontSize: 9, textTransform: 'uppercase', color: 'var(--text3)', marginBottom: 2 }}>Status</span>
+              <span style={{ fontWeight: 500, color: 'var(--teal)', display: 'flex', alignItems: 'center', gap: 4 }}>
+                <Sparkles size={11} /> Embedded
+              </span>
+            </div>
+          </div>
+
+          <button onClick={handleDelete} className="btn-outline" style={{
+            width: '100%',
+            justifyContent: 'center',
+            borderColor: 'rgba(255,107,107,0.3)',
+            color: '#ff6b6b',
+            padding: '10px 14px',
+            fontSize: 12,
+            marginTop: 4
+          }}>
+            <Trash2 size={14} /> Wipe Brochure & Reset
+          </button>
+        </article>
+      ) : (
+        <div
+          onDragOver={onDragOver}
+          onDragLeave={onDragLeave}
+          onDrop={onDrop}
+          style={{
+            border: `1.5px dashed ${isDragOver ? 'var(--v)' : 'var(--border2)'}`,
+            borderRadius: 'var(--r2)',
+            padding: '40px 20px',
+            textAlign: 'center',
+            background: isDragOver ? 'rgba(124,92,252,0.05)' : 'var(--surface2)',
+            cursor: 'pointer',
+            transition: 'all 0.3s'
+          }}
+          onClick={() => document.getElementById('brochure-file-picker').click()}
+        >
+          <input
+            id="brochure-file-picker"
+            type="file"
+            accept="application/pdf"
+            onChange={onFileChange}
+            style={{ display: 'none' }}
+          />
+
+          {uploading ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+              <Loader2 size={32} className="spin-slow" style={{ color: 'var(--v2)', animation: 'spin-slow 1s linear infinite' }} />
+              <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Uploading PDF...</p>
+              <div style={{ width: '100%', maxWidth: 200, height: 6, background: 'var(--ink3)', borderRadius: 3, overflow: 'hidden' }}>
+                <div style={{ width: `${progress}%`, height: '100%', background: 'var(--v2)', transition: 'width 0.2s' }} />
+              </div>
+              <p style={{ fontSize: 11, color: 'var(--text3)' }}>{progress}% complete</p>
+            </div>
+          ) : processing ? (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+              <Loader2 size={32} className="spin-slow" style={{ color: 'var(--teal)', animation: 'spin-slow 1s linear infinite' }} />
+              <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Parsing & Generating Vector Embeddings...</p>
+              <p style={{ fontSize: 11, color: 'var(--text3)', maxWidth: 280, lineHeight: 1.5 }}>
+                We are extracting PDF pages and generating semantic embeddings using gemini-embedding-001. This may take a minute.
+              </p>
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 12 }}>
+              <CloudUpload size={36} style={{ color: 'var(--text3)' }} />
+              <div>
+                <p style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Drag and drop brochure PDF here</p>
+                <p style={{ fontSize: 11, color: 'var(--text3)', marginTop: 4 }}>or click to browse from files</p>
+              </div>
+              <div style={{
+                fontSize: 10,
+                color: 'var(--text3)',
+                background: 'var(--surface)',
+                border: '0.5px solid var(--border)',
+                borderRadius: 8,
+                padding: '4px 8px',
+                marginTop: 8
+              }}>
+                Only .pdf files are supported
+              </div>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }

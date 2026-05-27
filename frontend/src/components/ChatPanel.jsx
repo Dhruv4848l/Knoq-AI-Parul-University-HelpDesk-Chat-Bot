@@ -1,10 +1,10 @@
 import { useState, useRef, useEffect } from "react";
 import api from "../api/client";
-import { Send, Sparkles, BookMarked, Bot, User, Lock, MapPin } from "lucide-react";
+import { Send, Sparkles, BookMarked, Bot, User, Lock, MapPin, FileText } from "lucide-react";
 
 /**
  * Lightweight markdown-to-JSX renderer for chat messages.
- * Supports: **bold**, [link text](url), * bullet points, and line breaks.
+ * Supports: **bold**, [link text](url), [Page X] citations, * bullet points, and line breaks.
  */
 function renderMarkdown(text) {
   if (!text) return null;
@@ -23,18 +23,53 @@ function renderMarkdown(text) {
       const linkMatch = remaining.match(/\[([^\]]+)\]\((https?:\/\/[^)]+)\)/);
       // Check for bold: **text**
       const boldMatch = remaining.match(/\*\*([^*]+)\*\*/);
+      // Check for Page Citation: [Page X]
+      const pageMatch = remaining.match(/\[Page\s*(\d+)\]/i);
       
       // Find which comes first
       const linkPos = linkMatch ? remaining.indexOf(linkMatch[0]) : Infinity;
       const boldPos = boldMatch ? remaining.indexOf(boldMatch[0]) : Infinity;
+      const pagePos = pageMatch ? remaining.indexOf(pageMatch[0]) : Infinity;
       
-      if (linkPos === Infinity && boldPos === Infinity) {
+      if (linkPos === Infinity && boldPos === Infinity && pagePos === Infinity) {
         // No more markdown, push remaining text
         if (remaining) parts.push(<span key={partIdx++}>{remaining}</span>);
         break;
       }
       
-      if (linkPos <= boldPos) {
+      // Compare positions to find the earliest match
+      if (pagePos < linkPos && pagePos < boldPos) {
+        // Page citation comes first
+        if (pagePos > 0) {
+          parts.push(<span key={partIdx++}>{remaining.substring(0, pagePos)}</span>);
+        }
+        parts.push(
+          <span
+            key={partIdx++}
+            style={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 3,
+              background: 'rgba(0, 212, 170, 0.12)',
+              color: 'var(--teal)',
+              padding: '1px 5px',
+              borderRadius: 6,
+              fontSize: 10,
+              fontWeight: 600,
+              marginLeft: 2,
+              marginRight: 2,
+              border: '0.5px solid rgba(0, 212, 170, 0.2)',
+              verticalAlign: 'middle',
+              userSelect: 'none'
+            }}
+            title={`Page ${pageMatch[1]} of Parul University Brochure`}
+          >
+            <FileText size={10} style={{ flexShrink: 0 }} />
+            Page {pageMatch[1]}
+          </span>
+        );
+        remaining = remaining.substring(pagePos + pageMatch[0].length);
+      } else if (linkPos <= boldPos) {
         // Link comes first
         if (linkPos > 0) {
           parts.push(<span key={partIdx++}>{remaining.substring(0, linkPos)}</span>);
@@ -120,7 +155,12 @@ export function ChatPanel({ mode = "free", height = 520 }) {
       } else {
         res = await api.post('/chat/free', { question: trimmed });
       }
-      setMessages(m => [...m, { role: "assistant", content: res.data.reply, source: res.data.source }]);
+      setMessages(m => [...m, { 
+        role: "assistant", 
+        content: res.data.reply, 
+        source: res.data.source, 
+        sources: res.data.sources 
+      }]);
     } catch {
       setMessages(m => [...m, { role: "assistant", content: "Something went wrong. Please try again.", source: "error" }]);
     } finally {
@@ -218,6 +258,47 @@ export function ChatPanel({ mode = "free", height = 520 }) {
               {m.source === "map" && (
                 <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, opacity: 0.7, color: 'var(--teal)' }}>
                   <BookMarked size={10} /> campus navigation
+                </div>
+              )}
+              {m.source === "brochure" && (
+                <div style={{ marginTop: 8, display: 'flex', alignItems: 'center', gap: 4, fontSize: 10, opacity: 0.7, color: 'var(--teal)' }}>
+                  <FileText size={10} /> from Parul Brochure
+                </div>
+              )}
+              {m.source === "brochure" && m.sources && m.sources.length > 0 && (
+                <div style={{ 
+                  marginTop: 12, 
+                  paddingTop: 8, 
+                  borderTop: '0.5px solid var(--border)',
+                  display: 'flex', 
+                  flexDirection: 'column',
+                  gap: 6
+                }}>
+                  <div style={{ fontSize: 10, color: 'var(--text3)', fontWeight: 500 }}>Cited Brochure Pages:</div>
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+                    {Array.from(new Set(m.sources.filter(s => s.pageNumber).map(s => s.pageNumber)))
+                      .sort((a, b) => a - b)
+                      .map(pageNum => (
+                        <div
+                          key={pageNum}
+                          style={{
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: 4,
+                            fontSize: 10,
+                            color: 'var(--text2)',
+                            background: 'var(--surface2)',
+                            border: '0.5px solid var(--border)',
+                            borderRadius: 6,
+                            padding: '3px 8px'
+                          }}
+                        >
+                          <FileText size={10} style={{ color: 'var(--v2)' }} />
+                          <span>Page {pageNum}</span>
+                        </div>
+                      ))
+                    }
+                  </div>
                 </div>
               )}
             </div>

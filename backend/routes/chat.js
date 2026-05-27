@@ -161,8 +161,17 @@ Have a pleasant walk across campus! 🏫`;
         } else {
           // RAG: pull top scraped pages
           const matches = await ragSearch(last, 4);
+          
+          // Detect if we are using brochure results
+          const isBrochure = matches.some(m => m.url && m.url.startsWith("brochure://"));
+          
           const context_blocks = matches
-            .map((m, i) => `[Source ${i + 1}] ${m.title ?? m.url}\nURL: ${m.url}\n${m.markdown.substring(0, 2000)}`)
+            .map((m, i) => {
+              if (m.pageNumber) {
+                return `[Source ${i + 1}] Brochure: ${m.pdfName}, Page: ${m.pageNumber}\nContent:\n${m.markdown.substring(0, 2500)}`;
+              }
+              return `[Source ${i + 1}] Title: ${m.title ?? m.url}\nURL: ${m.url}\nContent:\n${m.markdown.substring(0, 2500)}`;
+            })
             .join("\n\n---\n\n");
 
           const prefLines = [];
@@ -175,14 +184,22 @@ Have a pleasant walk across campus! 🏫`;
             ? `\n\nSTUDENT PROFILE (use to personalize: tailor exam dates to their semester, scope hostel info to their block, address them by first name occasionally):\n${prefLines.join("\n")}`
             : "";
 
-          const sys = `You are Knoq-AI, the official AI helpdesk for Parul University. Answer using ONLY the SOURCES below when relevant. Cite source numbers like [1], [2]. Be concise (3-6 sentences), warm, and factual. If the sources don't cover the question, answer from general knowledge of Parul University and say "(general info)". If outside campus scope, politely redirect.${studentBlock}
+          let sys = `You are Knoq-AI, the official AI helpdesk for Parul University. Answer using ONLY the SOURCES below when relevant. Cite source numbers like [1], [2]. Be concise (3-6 sentences), warm, and factual. If the sources don't cover the question, answer from general knowledge of Parul University and say "(general info)". If outside campus scope, politely redirect.${studentBlock}
 
 SOURCES:
 ${context_blocks || "(no indexed pages yet — answer from general knowledge of Parul University)"}`;
 
+          if (isBrochure) {
+            sys = `You are Knoq-AI, the official AI helpdesk for Parul University. Answer using ONLY the Parul University Brochure sources below. You MUST answer using the brochure information. 
+IMPORTANT: When you mention information from a source, you MUST cite the exact page number(s) in your text using the format "[Page X]" (e.g. "[Page 5]" or "[Page 12, Page 13]"). Do NOT make up page numbers. Be concise (3-6 sentences), professional, warm, and highly factual. If the brochure data does not cover the question, politely say that you cannot find that information in the current brochure. ${studentBlock}
+
+SOURCES:
+${context_blocks}`;
+          }
+
           try {
             reply = await chatCompletion(data.messages, sys);
-            source = "ai";
+            source = isBrochure ? "brochure" : "ai";
             
             // Save successful AI generation to semantic cache (fire-and-forget, non-blocking)
             saveToSemanticCache(last, reply).catch(e => console.error('[Semantic Cache] Background save failed:', e));
@@ -190,19 +207,28 @@ ${context_blocks || "(no indexed pages yet — answer from general knowledge of 
             reply = err.message || "Sorry, I couldn't reach the AI service.";
             source = "error";
           }
+          
+          // 4) Log Chat Transaction
+          await ChatLog.create({
+            userId: user._id,
+            question: last,
+            answer: reply,
+            source
+          });
+
+          return res.json({ 
+            reply, 
+            source,
+            sources: matches.map(m => ({
+              title: m.title,
+              url: m.url,
+              pageNumber: m.pageNumber,
+              pdfName: m.pdfName
+            }))
+          });
         }
       }
     }
-
-    // 4) Log Chat Transaction
-    await ChatLog.create({
-      userId: user._id,
-      question: last,
-      answer: reply,
-      source
-    });
-
-    return res.json({ reply, source });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });

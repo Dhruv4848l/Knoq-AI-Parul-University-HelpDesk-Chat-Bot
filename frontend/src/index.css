@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Playfair+Display:ital,wght@0,400..900;1,400..900&display=swap');
 @import "tailwindcss" source(none);
 @source "../src";
 
@@ -6,51 +6,51 @@
 
 @theme inline {
   --font-sans: 'Inter', system-ui, sans-serif;
-  --font-display: 'Inter', system-ui, sans-serif;
+  --font-display: 'Playfair Display', Georgia, serif;
 }
 
 /* ═══════════════════════════════════════════════════
    DARK MODE (default)
    ═══════════════════════════════════════════════════ */
 :root {
-  --ink: #0a0a0f;
-  --ink2: #12121a;
-  --ink3: #1a1a28;
-  --surface: #16161f;
-  --surface2: #1e1e2e;
-  --surface3: #252535;
+  --ink: #030303;
+  --ink2: #090909;
+  --ink3: #121212;
+  --surface: #0a0a0a;
+  --surface2: #121212;
+  --surface3: #181818;
 
-  --border: rgba(120, 100, 255, 0.12);
-  --border2: rgba(120, 100, 255, 0.25);
-  --border3: rgba(120, 100, 255, 0.45);
+  --border: rgba(255, 255, 255, 0.07);
+  --border2: rgba(255, 255, 255, 0.12);
+  --border3: rgba(255, 255, 255, 0.25);
 
-  --v: #7c5cfc;
-  --v2: #9d7fff;
-  --v3: #bfa7ff;
-  --v-glow: rgba(124, 92, 252, 0.35);
+  --v: #ffffff;
+  --v2: #f2f1ec;
+  --v3: #cfcec9;
+  --v-glow: rgba(255, 255, 255, 0.08);
 
-  --teal: #00d4aa;
-  --teal-glow: rgba(0, 212, 170, 0.25);
-  --gold: #f5c842;
-  --gold-glow: rgba(245, 200, 66, 0.2);
+  --teal: #ffffff;
+  --teal-glow: rgba(255, 255, 255, 0.05);
+  --gold: #dfc88a;
+  --gold-glow: rgba(223, 200, 138, 0.15);
 
-  --text: #f0eeff;
-  --text2: #a89fd8;
-  --text3: #6b6490;
+  --text: #f2f1ec;
+  --text2: #a09f9a;
+  --text3: #8a8984;
 
   --r: 16px;
   --r2: 24px;
 
-  --grid-color: rgba(120, 100, 255, 0.04);
-  --orb1-color: rgba(124, 92, 252, 0.10);
-  --orb2-color: rgba(0, 212, 170, 0.07);
-  --orb3-color: rgba(245, 200, 66, 0.06);
-  --card-shine: rgba(255, 255, 255, 0.05);
-  --nav-bg: rgba(10, 10, 15, 0.8);
+  --grid-color: rgba(255, 255, 255, 0.015);
+  --orb1-color: rgba(255, 255, 255, 0.02);
+  --orb2-color: rgba(255, 255, 255, 0.015);
+  --orb3-color: rgba(255, 255, 255, 0.01);
+  --card-shine: rgba(255, 255, 255, 0.03);
+  --nav-bg: rgba(3, 3, 3, 0.85);
   --input-bg: transparent;
-  --chip-bg: rgba(255, 255, 255, 0.04);
-  --badge-bg: rgba(124, 92, 252, 0.1);
-  --section-glow: rgba(124, 92, 252, 0.06);
+  --chip-bg: rgba(255, 255, 255, 0.03);
+  --badge-bg: rgba(255, 255, 255, 0.04);
+  --section-glow: rgba(255, 255, 255, 0.02);
 }
 
 /* ═══════════════════════════════════════════════════
@@ -123,6 +123,11 @@ body {
   line-height: 1.6;
   min-height: 100vh;
   transition: background 0.4s, color 0.4s;
+}
+
+h1, h2, h3, h4, .serif-font {
+  font-family: 'Playfair Display', Georgia, serif;
+  letter-spacing: -0.01em;
 }
 
 /* ═══════════════════════════════════════════════════
@@ -448,3 +453,56 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--v); }
+
+/* ═══════════════════════════════════════════════════
+   CUSTOM PAGE CLIP-FOLD CARD FOR STATS
+   ═══════════════════════════════════════════════════ */
+.page-fold-card {
+  position: relative;
+  background: var(--surface);
+  border: 0.5px solid var(--border);
+  border-radius: 16px;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+  clip-path: polygon(0% 0%, 100% 0%, 100% calc(100% - 24px), calc(100% - 24px) 100%, 0% 100%);
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.page-fold-corner {
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 24px;
+  height: 24px;
+  background: linear-gradient(135deg, transparent 50%, rgba(124, 92, 252, 0.25) 50%), 
+              linear-gradient(225deg, var(--v) 50%, #060608 50%);
+  border-top-left-radius: 4px;
+  box-shadow: -2px -2px 10px rgba(0, 0, 0, 0.5);
+  transition: all 0.4s cubic-bezier(0.25, 1, 0.5, 1);
+  transform-origin: bottom right;
+  pointer-events: none;
+  z-index: 10;
+}
+
+.page-fold-card:hover {
+  transform: translateY(-6px);
+  border-color: var(--border3);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.35), 0 0 30px var(--v-glow), inset 0 1px 0 var(--card-shine);
+  clip-path: polygon(0% 0%, 100% 0%, 100% calc(100% - 36px), calc(100% - 36px) 100%, 0% 100%);
+}
+
+.page-fold-card:hover .page-fold-corner {
+  width: 36px;
+  height: 36px;
+  background: linear-gradient(135deg, transparent 50%, rgba(0, 212, 170, 0.3) 50%), 
+              linear-gradient(225deg, var(--teal) 50%, #060608 50%);
+  box-shadow: -3px -3px 14px rgba(0, 0, 0, 0.6);
+}
+
+/* Floating animation for 3D/spline elements */
+.float-element {
+  animation: float 6s ease-in-out infinite;
+}
+

@@ -1,4 +1,4 @@
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { GraduationCap, LogIn, LayoutDashboard, LogOut, MessageSquare, Sun, Moon, User } from "lucide-react";
 import { useAuth } from "../contexts/AuthContext";
 import { useTheme } from "../contexts/ThemeContext";
@@ -6,7 +6,16 @@ import { useTheme } from "../contexts/ThemeContext";
 export function Nav() {
   const { user, roles, loading, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const location = useLocation();
   const isAdmin = roles.includes("admin");
+
+  const handleScroll = (e, id) => {
+    const el = document.getElementById(id);
+    if (el) {
+      e.preventDefault();
+      el.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
+  };
 
   return (
     <nav style={{
@@ -65,7 +74,7 @@ export function Nav() {
             </button>
           </>
         ) : (
-          <Link to="/login" className="btn-glow" style={{ padding: '9px 18px', fontSize: 13 }}>
+          <Link to="/login" className="btn-glow" style={{ padding: '9px 18px', fontSize: 13, color: 'var(--ink)' }}>
             <LogIn size={14} /> Sign in
           </Link>
         )}

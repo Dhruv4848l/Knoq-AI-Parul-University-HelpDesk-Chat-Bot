@@ -2,16 +2,33 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 import dotenv from "dotenv";
 dotenv.config();
 
-// Direct connection to Google Gemini replacing Lovable Gateway
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || "dummy_key");
+// ═══════════════════════════════════════════════════════════════════════════
+//  MULTI-KEY ROTATION — automatically switch keys on 429 rate limit
+// ═══════════════════════════════════════════════════════════════════════════
+const GEMINI_KEYS = [
+  process.env.GEMINI_API_KEY,
+  process.env.GEMINI_API_KEY_2,
+  process.env.GEMINI_API_KEY_3,  // future-proof: add more keys easily
+].filter(Boolean);                // remove undefined/empty
+
+console.log(`[AI] Loaded ${GEMINI_KEYS.length} Gemini API key(s)`);
+
+// Create a GenAI instance for each key
+const genAIInstances = GEMINI_KEYS.map(key => new GoogleGenerativeAI(key));
+
+// Track which key to try first (round-robin on success, skip on 429)
+let currentKeyIndex = 0;
+
+function getNextKeyIndex(current) {
+  return (current + 1) % genAIInstances.length;
+}
 
 export async function chatCompletion(messages, systemPrompt, temperature = 0.3, maxTokens = 500) {
-  if (!process.env.GEMINI_API_KEY) {
+  if (GEMINI_KEYS.length === 0) {
     throw new Error("AI service is not configured. Please contact the admin.");
   }
 
-  // gemini-2.0-flash has higher free-tier quota (15 RPM, 1500 RPD)
-  // gemini-2.5-flash is smarter but lower quota (10 RPM, 20 RPD free)
+  // Models to try (highest quota first)
   const models = ["gemini-2.0-flash", "gemini-2.5-flash"];
 
   let history = messages.map(msg => ({
@@ -26,48 +43,64 @@ export async function chatCompletion(messages, systemPrompt, temperature = 0.3, 
   const sleep = (ms) => new Promise(r => setTimeout(r, ms));
 
   let lastError = null;
-  for (const modelName of models) {
-    // Try each model up to 2 times (with a short delay on 429)
-    for (let attempt = 0; attempt < 2; attempt++) {
-      try {
-        if (attempt > 0) {
-          console.log(`[AI] Retry attempt ${attempt + 1} for ${modelName} after 5s delay...`);
-          await sleep(5000);
-        }
-        console.log(`[AI] Calling ${modelName}...`);
-        const model = genAI.getGenerativeModel({
-          model: modelName,
-          systemInstruction: systemPrompt,
-          generationConfig: { temperature, maxOutputTokens: maxTokens },
-        });
 
-        const chat = model.startChat({ history: [...history] });
-        const result = await chat.sendMessage(currentMessage);
-        return result.response.text();
-      } catch (err) {
-        lastError = err;
-        const msg = err.message || '';
-        const isRetryable = msg.includes("503") || msg.includes("429") || msg.includes("overloaded") || msg.includes("high demand") || msg.includes("quota") || msg.includes("rate");
-        console.error(`[AI] ${modelName} (attempt ${attempt + 1}) failed: ${msg.substring(0, 150)}`);
-        if (!isRetryable) throw err;
+  // Try each KEY → each MODEL → up to 2 attempts
+  for (let keyTry = 0; keyTry < genAIInstances.length; keyTry++) {
+    const keyIdx = (currentKeyIndex + keyTry) % genAIInstances.length;
+    const genAI = genAIInstances[keyIdx];
+    const keyLabel = `Key-${keyIdx + 1}`;
+
+    for (const modelName of models) {
+      for (let attempt = 0; attempt < 2; attempt++) {
+        try {
+          if (attempt > 0) {
+            console.log(`[AI] ${keyLabel} retry ${attempt + 1} for ${modelName} after 3s...`);
+            await sleep(3000);
+          }
+          console.log(`[AI] ${keyLabel} → ${modelName}...`);
+          const model = genAI.getGenerativeModel({
+            model: modelName,
+            systemInstruction: systemPrompt,
+            generationConfig: { temperature, maxOutputTokens: maxTokens },
+          });
+
+          const chat = model.startChat({ history: [...history] });
+          const result = await chat.sendMessage(currentMessage);
+          // Success! Remember this key for next call
+          currentKeyIndex = keyIdx;
+          return result.response.text();
+        } catch (err) {
+          lastError = err;
+          const msg = err.message || '';
+          const is429 = msg.includes("429") || msg.includes("quota") || msg.includes("rate");
+          const isRetryable = is429 || msg.includes("503") || msg.includes("overloaded") || msg.includes("high demand");
+          console.error(`[AI] ${keyLabel} ${modelName} (attempt ${attempt + 1}) failed: ${msg.substring(0, 150)}`);
+
+          if (!isRetryable) throw err;
+
+          // If it's a 429 on daily quota, skip to next key immediately
+          if (is429 && msg.includes("PerDay")) {
+            console.log(`[AI] ${keyLabel} daily quota exhausted. Switching to next key...`);
+            break; // break attempt loop, try next model or key
+          }
+        }
       }
     }
-    console.log(`[AI] ${modelName} exhausted. Trying next model...`);
+    console.log(`[AI] ${keyLabel} all models exhausted. Trying next key...`);
   }
 
-  throw lastError || new Error("All AI models are temporarily unavailable. Please try again.");
+  throw lastError || new Error("All AI keys and models are temporarily unavailable. Please try again.");
 }
 
 export async function embedTexts(texts) {
   try {
-    if (!process.env.GEMINI_API_KEY) {
-      console.warn("GEMINI_API_KEY is not set. Cannot embed texts.");
+    if (GEMINI_KEYS.length === 0) {
+      console.warn("No GEMINI API keys set. Cannot embed texts.");
       return texts.map(() => new Array(768).fill(0)); // Dummy embedding
     }
 
-    // gemini-embedding-001 is the current Google text embedding model.
-    // It outputs 3072-dim vectors by default but supports MRL truncation.
-    // We use 768 dimensions for efficiency in our semantic cache cosine similarity.
+    // Use the current preferred key for embeddings
+    const genAI = genAIInstances[currentKeyIndex];
     const model = genAI.getGenerativeModel({ model: "gemini-embedding-001" });
     
     const embeddings = [];
@@ -97,14 +130,15 @@ ${markdown.substring(0, 6000)}
 Respond ONLY with JSON: {"faqs":[{"question":"...","answer":"...","keywords":["..."],"category":"..."}]}. Keywords are 3-6 lowercase search terms. Category is one of: admissions, exams, fees, hostel, library, placement, scholarship, academics, transport, general.`;
 
   try {
-    if (!process.env.GEMINI_API_KEY) {
+    if (GEMINI_KEYS.length === 0) {
       if (process.env.DEEPSEEK_API_KEY) {
-        console.log("[AI Routing] GEMINI_API_KEY is not set for FAQ extraction. Routing to DeepSeek...");
+        console.log("[AI Routing] No Gemini keys for FAQ extraction. Routing to DeepSeek...");
         return await callDeepSeekJSON(prompt);
       }
       throw new Error("Gemini API key is not configured.");
     }
 
+    const genAI = genAIInstances[currentKeyIndex];
     const model = genAI.getGenerativeModel({
       model: "gemini-2.5-flash",
       generationConfig: {

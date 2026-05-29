@@ -316,8 +316,8 @@ function Home() {
           }}
         />
 
-        <div style={{ ...SECTION, paddingBottom: 0 }}>
-          <div style={{ textAlign: "center", marginBottom: 40 }}>
+        <div style={{ ...SECTION, paddingTop: "2rem", paddingBottom: 0 }}>
+          <div style={{ textAlign: "center", marginBottom: 12 }}>
             <h2
               style={{
                 fontFamily: "'Playfair Display', Georgia, serif",
@@ -333,15 +333,14 @@ function Home() {
             <p style={{ color: "#a09f9a", maxWidth: 530, margin: "0 auto", fontSize: 15, lineHeight: 1.7 }}>
               Scroll to reveal the workspace and start chatting with our AI-powered assistant directly on-page.
             </p>
+            <p style={{ fontSize: 18, fontWeight: 600, color: "rgba(255,255,255,0.85)", marginTop: 32 }}>
+              Knoq-AI Chat Terminal
+            </p>
           </div>
         </div>
 
         <MacbookScroll
-          title={
-            <span style={{ fontSize: 18, fontWeight: 600, color: "rgba(255,255,255,0.85)" }}>
-              Knoq-AI Chat Terminal
-            </span>
-          }
+          title={null}
           badge={
             <div
               style={{

@@ -103,7 +103,7 @@ export function SiteCrawler() {
             {recentJobs.length === 0 && <p style={{ padding: 12, fontSize: 12, color: 'var(--text3)' }}>No crawls yet.</p>}
             {recentJobs.map(j => (
               <button key={j.id} onClick={() => { setActiveJobId(j.id); setAutoRun(j.status !== "completed" && j.status !== "failed"); }}
-                style={{ width: '100%', textAlign: 'left', padding: 12, borderBottom: '0.5px solid var(--border)', background: 'transparent', color: 'var(--text3)', cursor: 'pointer', fontSize: 12, border: 'none', borderBottom: '0.5px solid var(--border)', transition: 'background 0.2s' }}>
+                style={{ width: '100%', textAlign: 'left', padding: 12, background: 'transparent', color: 'var(--text3)', cursor: 'pointer', fontSize: 12, border: 'none', borderBottom: '0.5px solid var(--border)', transition: 'background 0.2s' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 2 }}>
                   <span style={{ fontWeight: 500, color: 'var(--text2)' }}>{j.status}</span>
                   <span>{new Date(j.started_at).toLocaleString()}</span>

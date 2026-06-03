@@ -268,13 +268,13 @@ function Home() {
                   e.currentTarget.style.borderColor = "rgba(255,255,255,0.18)";
                 }}
               >
-                <MessageSquare size={15} /> Try free chat
+                <MessageSquare size={15} /> Try AI chat
               </a>
             </div>
 
             <p style={{ fontSize: 12, color: "var(--text3)" }}>
-              Sign-in restricted to <strong style={{ color: "#ffffff" }}>@paruluniversity.ac.in</strong> · Free mode
-              open to everyone
+              Sign-in with <strong style={{ color: "#ffffff" }}>@paruluniversity.ac.in</strong> for personalized experience
+              · AI chat open to everyone
             </p>
           </div>
 
@@ -360,7 +360,7 @@ function Home() {
                 letterSpacing: "0.05em",
               }}
             >
-              <Sparkles size={11} /> FREE MODE
+              <Sparkles size={11} /> AI CHAT
             </div>
           }
           showGradient={false}
@@ -608,10 +608,10 @@ function Home() {
 
               <ul style={{ listStyle: "none", display: "flex", flexDirection: "column", gap: 12, borderTop: "0.5px solid var(--border)", paddingTop: 24 }}>
                 {[
-                  { text: "Exams, hostel, and general guidelines", on: true },
+                  { text: "Full AI-powered answers using knowledge base", on: true },
                   { text: "No login or authentication required", on: true },
-                  { text: "Does not save personal chat logs", on: false },
-                  { text: "No generative AI fallback for custom queries", on: false },
+                  { text: "Campus navigation & RAG search", on: true },
+                  { text: "Personalized profile & chat history", on: false },
                 ].map((item) => (
                   <li
                      key={item.text}

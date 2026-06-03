@@ -119,7 +119,7 @@ const AUTHED_SUGGESTIONS = ["Tell me about scholarships", "How do I get a transc
 export function ChatPanel({ mode = "free", height = 520 }) {
   const initial = mode === "authed"
     ? "Welcome back! Ask me anything about campus — I'll search the knowledge base and use AI when needed."
-    : "Hi! I'm Knoq-AI — free mode shares basic public info. Sign in with @paruluniversity.ac.in for the full experience.";
+    : "Hi! I'm Knoq-AI — your AI-powered campus assistant for Parul University. Ask me anything!";
 
   const [messages, setMessages] = useState([{ role: "assistant", content: initial }]);
   const [input, setInput] = useState("");
@@ -201,7 +201,7 @@ export function ChatPanel({ mode = "free", height = 520 }) {
           <div>
             <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Knoq-AI</div>
             <div style={{ fontSize: 11, color: 'var(--text3)' }}>
-              {mode === "authed" ? "Full access · AI + Knowledge Base" : "Free mode · basic FAQ only"}
+              {mode === "authed" ? "Full access · AI + Knowledge Base" : "AI + Knowledge Base · Guest"}
             </div>
           </div>
         </div>
@@ -356,7 +356,7 @@ export function ChatPanel({ mode = "free", height = 520 }) {
         <input
           value={input}
           onChange={e => setInput(e.target.value)}
-          placeholder={mode === "authed" ? "Ask anything about campus…" : "Ask a basic question…"}
+          placeholder={mode === "authed" ? "Ask anything about campus…" : "Ask anything about campus…"}
           style={{
             flex: 1, border: 'none', background: 'transparent',
             fontSize: 13, color: 'var(--text2)', outline: 'none',

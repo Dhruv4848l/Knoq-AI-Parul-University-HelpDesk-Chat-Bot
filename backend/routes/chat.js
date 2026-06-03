@@ -909,7 +909,7 @@ async function searchPublicData(query, limit = 5) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
-//  FREE MODE ENDPOINT
+//  FREE MODE ENDPOINT — FULL ACCESS (no login required)
 // ═══════════════════════════════════════════════════════════════════════════
 
 const freeSchema = z.object({
@@ -924,47 +924,109 @@ const freeSchema = z.object({
 router.post("/free", async (req, res) => {
   try {
     const data = freeSchema.parse(req.body);
-    const lastMessage = data.messages[data.messages.length - 1].content;
+    const last = data.messages[data.messages.length - 1].content;
+    const q = last.toLowerCase();
 
-    // 1) Navigation / building info — works WITHOUT AI!
-    const navResult = await handleNavigationQuery(data.messages, null);
-    if (navResult) {
-      const upsell = "\n\n---\n💡 _Sign in with your @paruluniversity.ac.in email for full AI-powered answers!_";
-      return res.json({ reply: navResult.reply + upsell, source: navResult.source });
+    let reply;
+    let source;
+    let matchedSources = [];
+
+    // 1) Semantic Cache
+    const cachedReply = await getSemanticCachedResponse(last);
+    if (cachedReply) {
+      return res.json({ reply: cachedReply, source: "cache" });
     }
 
-    // 2) FAQ search
+    // 2) Navigation / Building Info
+    const navResult = await handleNavigationQuery(data.messages, null);
+    if (navResult) {
+      saveToSemanticCache(last, navResult.reply).catch(() => {});
+      return res.json({ reply: navResult.reply, source: navResult.source });
+    }
+
+    // 3) Datasheet + FAQ fuzzy search (ALL FAQs, not just public)
     const recentUserMsgs = data.messages
       .filter(m => m.role === 'user')
       .slice(-3)
       .map(m => m.content)
       .join(" ");
 
-    const relevantChunks = await searchPublicData(recentUserMsgs, 5);
+    const datasheetHits = await searchPublicData(recentUserMsgs, 4);
 
-    if (relevantChunks.length > 0) {
-      const context = relevantChunks.map(c => c.answer).join("\n\n---\n\n");
-      const sysPrompt = `You are Knoq-AI, the official AI helpdesk for Parul University (free mode). Answer ONLY using the SOURCES below. Be concise (2-4 sentences), accurate, and helpful. If the user has typos, understand what they meant. If the sources don't cover the question, say "I have limited info in free mode — sign in with your @paruluniversity.ac.in email for full AI access."
+    const allFaqs = await Faq.find({}, "question answer keywords").lean();
+    const faqHit = allFaqs.find(f => f.keywords?.some(kw => q.includes(kw.toLowerCase())));
+
+    // 4) RAG search
+    const matches = await ragSearch(last, 3);
+    const isBrochure = matches.some(m => m.url?.startsWith("brochure://"));
+
+    // 5) Combined context
+    let contextBlocks = [];
+
+    if (datasheetHits.length > 0) {
+      datasheetHits.forEach((hit, i) => {
+        contextBlocks.push(`[Datasheet ${i + 1}] ${hit.answer}`);
+      });
+    }
+    if (faqHit) {
+      contextBlocks.push(`[FAQ] Q: ${faqHit.question}\nA: ${faqHit.answer}`);
+    }
+    matches.forEach((m, i) => {
+      if (m.pageNumber) {
+        contextBlocks.push(`[Source ${i + 1}] Brochure: ${m.pdfName}, Page: ${m.pageNumber}\n${m.markdown.substring(0, 2000)}`);
+      } else {
+        contextBlocks.push(`[Source ${i + 1}] ${m.title || m.url}\n${m.markdown.substring(0, 2000)}`);
+      }
+    });
+
+    const allContext = contextBlocks.join("\n\n---\n\n");
+
+    let sys;
+    if (isBrochure) {
+      sys = `You are Knoq-AI, the official AI helpdesk for Parul University. Answer using the brochure and datasheet sources below. Cite page numbers as [Page X]. Be concise (3-6 sentences), warm, factual. Handle typos gracefully — if the user wrote "btech" they mean "B.Tech", "hostle" means "hostel", "CSE" means "Computer Science & Engineering", etc.
 
 SOURCES:
-${context}`;
+${allContext || "(no data available)"}`;
+    } else {
+      sys = `You are Knoq-AI, the official AI helpdesk for Parul University. Answer using the SOURCES below. Be concise (3-6 sentences), warm, factual. Cite [Datasheet N] or [Source N] when using specific data. Handle typos gracefully — "btech" = "B.Tech", "hostle" = "hostel", "CSE" = "Computer Science & Engineering", etc. If sources don't cover the question, answer from general PU knowledge and note "(general info)".
 
-      try {
-        const reply = await chatCompletion(data.messages, sysPrompt);
-        return res.json({ reply, source: "ai (public data)" });
-      } catch (aiErr) {
-        console.error("[Free Chat] AI error:", aiErr.message);
-        // Serve FAQ data directly when AI is down
-        const bestMatch = relevantChunks[0];
-        const directReply = `📋 **Here's what I found:**\n\n${bestMatch.question ? `**Q:** ${bestMatch.question}\n\n` : ""}**A:** ${bestMatch.answer}\n\n---\n⚠️ _AI rephrasing is temporarily unavailable. Showing raw FAQ data. Sign in for the full experience!_`;
-        return res.json({ reply: directReply, source: "faq (direct)" });
+SOURCES:
+${allContext || "(no indexed data — answer from general knowledge of Parul University)"}`;
+    }
+
+    try {
+      reply = await chatCompletion(data.messages, sys);
+      source = isBrochure ? "brochure" : (datasheetHits.length > 0 ? "datasheet" : "ai");
+      saveToSemanticCache(last, reply).catch(() => {});
+    } catch (err) {
+      console.error("[Free Chat] AI error:", err.message);
+      // Serve whatever data we have directly when AI is down
+      if (faqHit) {
+        reply = `📋 **Here's what I found:**\n\n**Q:** ${faqHit.question}\n\n**A:** ${faqHit.answer}\n\n---\n⚠️ _AI rephrasing is temporarily unavailable. Showing raw FAQ data._`;
+        source = "faq (direct)";
+      } else if (datasheetHits.length > 0) {
+        const topHit = datasheetHits[0];
+        reply = `📋 **Here's what I found:**\n\n${topHit.question ? `**Q:** ${topHit.question}\n\n` : ""}**A:** ${topHit.answer}\n\n---\n⚠️ _AI rephrasing is temporarily unavailable. Showing raw data._`;
+        source = "datasheet (direct)";
+      } else if (matches.length > 0) {
+        const topMatch = matches[0];
+        reply = `📋 **Here's what I found:**\n\n${topMatch.markdown?.substring(0, 1000) || "(Content available but needs AI to summarize)"}\n\n---\n⚠️ _AI service is temporarily unavailable. Please try again shortly._`;
+        source = "rag (direct)";
+      } else {
+        reply = "⚠️ The AI service is temporarily unavailable and I couldn't find a direct answer in our database. Please try again in a few minutes, or ask about campus navigation — that works without AI!";
+        source = "error";
       }
     }
 
-    return res.json({
-      reply: "I couldn't find specific information for that query in free mode. Sign in with your @paruluniversity.ac.in email to get full AI-powered answers with access to the complete knowledge base!",
-      source: "fallback",
-    });
+    matchedSources = matches.map(m => ({
+      title: m.title,
+      url: m.url,
+      pageNumber: m.pageNumber,
+      pdfName: m.pdfName
+    }));
+
+    return res.json({ reply, source, sources: matchedSources });
+
   } catch (error) {
     if (error instanceof z.ZodError) {
       return res.status(400).json({ error: error.errors });

@@ -56,11 +56,12 @@
 
 ### Access Tiers
 
-| Feature | 🔓 Free Mode (Guest) | 🔐 Full Mode (Verified) |
+| Feature | 🔓 Guest Mode | 🔐 Verified Student |
 |---|---|---|
-| Access | Anyone | `@paruluniversity.ac.in` only |
-| FAQs | Curated, basic | Full knowledge base |
-| AI Generation | ❌ | ✅ Gemini RAG |
+| Access | Anyone — no login required | `@paruluniversity.ac.in` login |
+| AI Chat (Gemini RAG) | ✅ Full access | ✅ Full access |
+| Campus Navigation & Maps | ✅ Full access | ✅ Full access |
+| FAQ & Knowledge Base | ✅ Full access | ✅ Full access |
 | Chat History | ❌ | ✅ Persistent |
 | Profile Personalization | ❌ | ✅ Branch / Semester |
 | Admin Controls | ❌ | ✅ (role-based) |
@@ -85,9 +86,9 @@
 
 ### 🏠 Landing Page · Home
 
-The editorial dark-mode landing page with a GSAP-animated hero, 3D interactive torus-knot, MacBook scroll reveal with live free-mode chat panel, stats cards, and access tier comparison.
+The editorial dark-mode landing page with a GSAP-animated hero, 3D interactive torus-knot, MacBook scroll reveal with live chat panel, stats cards, and access tier comparison.
 
-![Knoq-AI Landing Page Hero](readme-assets/home_hero.png)
+![Knoq-AI Landing Page Hero](readme-assets/hero_landing.png)
 
 **DOM Sections on `/`:**
 | ID | Component | Description |
@@ -104,7 +105,7 @@ The editorial dark-mode landing page with a GSAP-animated hero, 3D interactive t
 
 ### 💬 AI Chat Dashboard
 
-The core product experience on `/app`. Full-mode users get Gemini-powered RAG responses with source citations. Free-mode users get curated FAQ lookups.
+The core product experience on `/app`. All users get Gemini-powered RAG responses with source citations, campus navigation with Google Maps links, and real-time knowledge base search.
 
 ![Knoq-AI Chat Dashboard](readme-assets/chat_dashboard.png)
 

@@ -18,6 +18,8 @@
   <img src="https://img.shields.io/badge/Backend-Render-46E3B7?style=for-the-badge&logo=render&logoColor=black" />
 </p>
 
+<h3>🔗 <a href="https://knoq-ai-chatbot.vercel.app/">Live Demo → knoq-ai-chatbot.vercel.app</a></h3>
+
 </div>
 
 ---
@@ -48,7 +50,9 @@
 
 ## 🌟 Overview
 
-**Knoq-AI** is a full-stack MERN (MongoDB, Express, React, Node.js) AI helpdesk built specifically for **Parul University**. It handles the thousands of daily queries students ask the admin office — _instantly_, _24/7_, and _in plain English_.
+**Knoq-AI** is a full-stack MERN (MongoDB, Express, React, Node.js) AI helpdesk built specifically for **Parul University**. It leverages **Retrieval-Augmented Generation (RAG)** with Google Gemini, MongoDB Atlas Vector Search, and a two-tier caching system to handle the thousands of daily queries students ask the admin office — _instantly_, _24/7_, and _in plain English_.
+
+> **🌐 Live App:** [https://knoq-ai-chatbot.vercel.app/](https://knoq-ai-chatbot.vercel.app/)
 
 ### Access Tiers
 
@@ -430,57 +434,141 @@ Admins can upload the university brochure PDF. The system:
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Getting Started — Run Locally (Step-by-Step)
 
-### Prerequisites
-- **Node.js** v18+
-- **MongoDB Atlas** cluster (free tier works)
-- **Google Gemini API Key** (get from [Google AI Studio](https://aistudio.google.com/))
-- **Firecrawl API Key** (optional, for admin crawling)
-- **DeepSeek API Key** (optional, fallback AI)
-- **Google Maps API Key** (optional, for campus navigation)
+Follow these steps to get Knoq-AI running on your local machine.
 
-### Installation
+---
+
+### Step 1 · Prerequisites
+
+Make sure the following are installed on your system:
+
+| Requirement | Minimum Version | How to get it |
+|---|---|---|
+| **Node.js** | v18+ | [nodejs.org](https://nodejs.org/) |
+| **npm** | v9+ | Comes with Node.js |
+| **Git** | Any | [git-scm.com](https://git-scm.com/) |
+
+You will also need accounts / API keys for:
+
+| Service | Required? | Where to get it |
+|---|---|---|
+| **MongoDB Atlas** | ✅ Required | [mongodb.com/atlas](https://www.mongodb.com/atlas) (free tier works) |
+| **Google Gemini API Key** | ✅ Required | [Google AI Studio](https://aistudio.google.com/) |
+| **Firecrawl API Key** | ⬜ Optional | [firecrawl.dev](https://firecrawl.dev/) — needed for admin site crawling |
+| **DeepSeek API Key** | ⬜ Optional | [deepseek.com](https://deepseek.com/) — fallback AI when Gemini hits quota |
+| **Google Maps API Key** | ⬜ Optional | [Google Cloud Console](https://console.cloud.google.com/) — for campus navigation |
+
+---
+
+### Step 2 · Clone the Repository
 
 ```bash
-# 1. Clone the repository
 git clone https://github.com/Dhruv4848l/Knoq-AI-Parul-University-HelpDesk-Chat-Bot.git
 cd Knoq-AI-Parul-University-HelpDesk-Chat-Bot
+```
 
-# 2. Install all dependencies (root + backend + frontend)
+---
+
+### Step 3 · Install Dependencies
+
+Install root, backend, and frontend dependencies in one go:
+
+```bash
 npm install
 npm run install:all
 ```
 
-### Environment Setup
+> This runs `npm install` inside both the `backend/` and `frontend/` directories automatically.
+
+---
+
+### Step 4 · Configure Environment Variables
+
+1. Copy the example environment file into the backend folder:
+
+   ```bash
+   # macOS / Linux
+   cp .env.example backend/.env
+
+   # Windows (PowerShell)
+   Copy-Item .env.example backend/.env
+
+   # Windows (CMD)
+   copy .env.example backend\.env
+   ```
+
+2. Open `backend/.env` in your editor and fill in your real keys:
+
+   ```env
+   PORT=5000
+   MONGODB_URI=mongodb+srv://<user>:<password>@cluster.mongodb.net/knoq-ai
+   JWT_SECRET=change_me_to_a_random_64_char_string
+   GEMINI_API_KEY=your_gemini_api_key_here
+
+   # Optional keys (leave blank if not using)
+   DEEPSEEK_API_KEY=
+   GOOGLE_MAPS_API_KEY=
+   FIRECRAWL_API_KEY=
+   ```
+
+   > See the full list of environment variables in the [Environment Variables](#-environment-variables) section below.
+
+---
+
+### Step 5 · Start the Development Server
 
 ```bash
-# Copy the example env file
-cp .env.example backend/.env
-```
-
-Then edit `backend/.env` with your real keys (see [Environment Variables](#-environment-variables)).
-
-### Run Locally
-
-```bash
-# Start both frontend (port 5173) and backend (port 5000) concurrently
 npm run dev
 ```
 
-| Service | URL |
-|---|---|
-| Frontend | http://localhost:5173 |
-| Backend API | http://localhost:5000 |
-| API Health | http://localhost:5000/ |
+This uses `concurrently` to start **both** servers at once:
 
-### Seed Data (Optional)
+| Service | URL | What it runs |
+|---|---|---|
+| 🖥️ Frontend (Vite) | [http://localhost:5173](http://localhost:5173) | `cd frontend && npm run dev` |
+| ⚙️ Backend (Express) | [http://localhost:5000](http://localhost:5000) | `cd backend && node --watch server.js` |
+
+Open [http://localhost:5173](http://localhost:5173) in your browser — you should see the Knoq-AI landing page! 🎉
+
+---
+
+### Step 6 · Seed Data (Optional)
+
+To import the campus navigation dataset and university datasheet into MongoDB:
 
 ```bash
-# Ingest the campus navigation CSV + Excel datasets into MongoDB
 cd backend
 node scripts/ingestDatasets.js
 ```
+
+This populates the `campusroutes` collection with building locations and walking routes.
+
+---
+
+### Step 7 · Grant Admin Access (Optional)
+
+To access the Admin Panel at `/admin`, update your user's role in MongoDB:
+
+```js
+// In MongoDB Shell or Atlas Data Explorer
+db.users.updateOne(
+  { email: "your@paruluniversity.ac.in" },
+  { $set: { role: "admin" } }
+)
+```
+
+---
+
+### 🔧 Troubleshooting
+
+| Issue | Solution |
+|---|---|
+| `ECONNREFUSED` on backend | Make sure MongoDB Atlas URI is correct and your IP is whitelisted |
+| Frontend shows blank page | Check browser console; ensure backend is running on port 5000 |
+| `npm run dev` fails | Make sure `concurrently` is installed: `npm install` in root |
+| Gemini API 429 errors | Add additional API keys (`GEMINI_API_KEY_2`, `GEMINI_API_KEY_3`) for auto-rotation |
 
 ---
 

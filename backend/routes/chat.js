@@ -763,6 +763,20 @@ function buildNotFoundReply(originMatch, destMatch, parsedOrigin, parsedDest) {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+//  BASIC INFO INTERCEPTOR — "info about parul university"
+// ═══════════════════════════════════════════════════════════════════════════
+function handleBasicInfoQuery(query) {
+  const q = query.toLowerCase().trim();
+  if (q.includes("info about parul university") || q.includes("about parul university") || q.includes("details of parul university") || q === "parul university info" || q === "parul university") {
+    return {
+      reply: `🏛️ **Parul University - Basic Information**\n\n* **University Name**: Parul University, Vadodara, Gujarat\n* **Brand Ambassador**: MS Dhoni (Mahendra Singh Dhoni)\n* **Tagline**: Finish STRONG – Your WINNING Innings BEGINS here.\n* **NAAC Grade**: A++\n* **Website**: [www.paruluniversity.ac.in](https://www.paruluniversity.ac.in)\n* **Admissions Portal**: [admissions.paruluniversity.ac.in](https://admissions.paruluniversity.ac.in)\n* **Toll Free Number**: 1800-123-1104`,
+      source: "datasheet"
+    };
+  }
+  return null;
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 //  SHARED NAVIGATION HANDLER — used by both free and authed endpoints
 //  Strategy: LOCAL PARSER FIRST (instant) → Gemini fallback (if local fails)
 // ═══════════════════════════════════════════════════════════════════════════
@@ -770,7 +784,11 @@ async function handleNavigationQuery(messages, userId) {
   const last = messages[messages.length - 1].content;
   const q = last.toLowerCase();
 
-  // Check for building info queries first ("what is A1?", "tell me about N block")
+  // Check for basic info query first
+  const basicInfo = handleBasicInfoQuery(last);
+  if (basicInfo) return basicInfo;
+
+  // Check for building info queries ("what is A1?", "tell me about N block")
   const buildingInfo = await handleBuildingInfoQuery(last);
   if (buildingInfo) return buildingInfo;
 
@@ -931,17 +949,16 @@ router.post("/free", async (req, res) => {
     let source;
     let matchedSources = [];
 
-    // 1) Semantic Cache
+    // 1) Navigation / Building Info / Basic Info (Bypass Cache for Deterministic Responses)
+    const navResult = await handleNavigationQuery(data.messages, null);
+    if (navResult) {
+      return res.json({ reply: navResult.reply, source: navResult.source });
+    }
+
+    // 2) Semantic Cache
     const cachedReply = await getSemanticCachedResponse(last);
     if (cachedReply) {
       return res.json({ reply: cachedReply, source: "cache" });
-    }
-
-    // 2) Navigation / Building Info
-    const navResult = await handleNavigationQuery(data.messages, null);
-    if (navResult) {
-      saveToSemanticCache(last, navResult.reply).catch(() => {});
-      return res.json({ reply: navResult.reply, source: navResult.source });
     }
 
     // 3) Datasheet + FAQ fuzzy search (ALL FAQs, not just public)
@@ -1060,19 +1077,18 @@ router.post("/authed", requireAuth, async (req, res) => {
     let source;
     let matchedSources = [];
 
-    // 1) Semantic Cache
+    // 1) Navigation / Building Info / Basic Info (Bypass Cache for Deterministic Responses)
+    const navResult = await handleNavigationQuery(data.messages, user._id);
+    if (navResult) {
+      await ChatLog.create({ userId: user._id, question: last, answer: navResult.reply, source: navResult.source }).catch(() => {});
+      return res.json({ reply: navResult.reply, source: navResult.source });
+    }
+
+    // 2) Semantic Cache
     const cachedReply = await getSemanticCachedResponse(last);
     if (cachedReply) {
       await ChatLog.create({ userId: user._id, question: last, answer: cachedReply, source: "cache" }).catch(() => {});
       return res.json({ reply: cachedReply, source: "cache" });
-    }
-
-    // 2) Navigation / Building Info — shared handler
-    const navResult = await handleNavigationQuery(data.messages, user._id);
-    if (navResult) {
-      saveToSemanticCache(last, navResult.reply).catch(() => {});
-      await ChatLog.create({ userId: user._id, question: last, answer: navResult.reply, source: navResult.source }).catch(() => {});
-      return res.json({ reply: navResult.reply, source: navResult.source });
     }
 
     // 3) Datasheet + FAQ fuzzy search

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import api from "../api/client";
-import { Send, Sparkles, BookMarked, Bot, User, Lock, MapPin, FileText } from "lucide-react";
+import { Send, Sparkles, BookMarked, Bot, User, Lock, MapPin, FileText, X } from "lucide-react";
+import { BUILDING_CODES } from "../data/buildingCodes";
 
 /**
  * Lightweight markdown-to-JSX renderer for chat messages.
@@ -124,11 +125,12 @@ export function ChatPanel({ mode = "free", height = 520 }) {
   const [messages, setMessages] = useState([{ role: "assistant", content: initial }]);
   const [input, setInput] = useState("");
   const [isPending, setIsPending] = useState(false);
+  const [showMapCodes, setShowMapCodes] = useState(false);
   const scrollRef = useRef(null);
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: "smooth" });
-  }, [messages, isPending]);
+  }, [messages, isPending, showMapCodes]);
 
   // Hook into quick-trigger query clicks from main pages
   useEffect(() => {
@@ -179,6 +181,7 @@ export function ChatPanel({ mode = "free", height = 520 }) {
       display: 'flex',
       flexDirection: 'column',
       height: height,
+      position: 'relative',
       transition: 'all 0.4s cubic-bezier(.34,1.56,.64,1)',
     }}>
       {/* Header */}
@@ -205,10 +208,82 @@ export function ChatPanel({ mode = "free", height = 520 }) {
             </div>
           </div>
         </div>
-        {mode === "free" && (
-          <span className="guest-chip"><Lock size={11} /> GUEST</span>
-        )}
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <button
+            onClick={() => setShowMapCodes(prev => !prev)}
+            style={{
+              display: 'flex', alignItems: 'center', gap: 6,
+              padding: '6px 12px', borderRadius: 8,
+              background: showMapCodes ? 'rgba(0,212,170,0.15)' : 'rgba(255,255,255,0.05)',
+              border: `0.5px solid ${showMapCodes ? 'rgba(0,212,170,0.3)' : 'var(--border2)'}`,
+              color: showMapCodes ? 'var(--teal)' : 'var(--text2)',
+              fontSize: 12, fontWeight: 500, cursor: 'pointer',
+              transition: 'all 0.2s ease',
+            }}
+          >
+            <MapPin size={14} />
+            {showMapCodes ? 'Hide Codes' : 'Map Codes'}
+          </button>
+          {mode === "free" && (
+            <span className="guest-chip"><Lock size={11} /> GUEST</span>
+          )}
+        </div>
       </div>
+
+      {/* Map Codes Overlay */}
+      {showMapCodes && (
+        <div style={{
+          position: 'absolute', top: 65, left: 0, right: 0, bottom: 53,
+          background: 'rgba(3,3,3,0.95)',
+          backdropFilter: 'blur(12px)',
+          WebkitBackdropFilter: 'blur(12px)',
+          zIndex: 10,
+          padding: 20,
+          overflowY: 'auto',
+          borderBottom: '0.5px solid var(--border)',
+          animation: 'fade-in 0.2s ease-out'
+        }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 }}>
+            <h3 style={{ fontSize: 16, fontWeight: 500, color: 'var(--text)' }}>Campus Building Codes</h3>
+            <button onClick={() => setShowMapCodes(false)} style={{
+              background: 'transparent', border: 'none', color: 'var(--text2)', cursor: 'pointer', padding: 4
+            }}>
+              <X size={18} />
+            </button>
+          </div>
+          <p style={{ fontSize: 13, color: 'var(--text3)', marginBottom: 20, lineHeight: 1.5 }}>
+            Use these codes to ask for accurate navigation (e.g. <i>"How to get from A1 to H10?"</i>).
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {BUILDING_CODES.map(b => (
+              <div key={b.code} style={{
+                display: 'flex', gap: 12, alignItems: 'flex-start',
+                padding: '10px 12px',
+                background: 'rgba(255,255,255,0.02)',
+                border: '0.5px solid var(--border)',
+                borderRadius: 8
+              }}>
+                <div style={{
+                  background: 'rgba(0,212,170,0.1)',
+                  color: 'var(--teal)',
+                  padding: '4px 8px',
+                  borderRadius: 6,
+                  fontSize: 12,
+                  fontWeight: 600,
+                  border: '0.5px solid rgba(0,212,170,0.2)',
+                  minWidth: 42,
+                  textAlign: 'center'
+                }}>
+                  {b.code}
+                </div>
+                <div style={{ fontSize: 13, color: 'var(--text2)', paddingTop: 3 }}>
+                  {b.name}
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* Messages */}
       <div ref={scrollRef} style={{

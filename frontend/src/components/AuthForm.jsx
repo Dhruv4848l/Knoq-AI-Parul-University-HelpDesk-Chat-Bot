@@ -37,7 +37,7 @@ export function AuthForm({ mode }) {
   }
 
   const title = mode === "login" ? "Welcome back" : "Create your account";
-  const sub = mode === "login" ? "Sign in to access the full Knoq-AI." : "Open to all Parul University students & staff.";
+  const sub = mode === "login" ? "Sign in to access the full KnoQ-AI." : "Open to all Parul University students & staff.";
 
   return (
     <div className="page" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -57,9 +57,9 @@ export function AuthForm({ mode }) {
               display: 'flex', alignItems: 'center', justifyContent: 'center',
               color: 'var(--v2)', background: 'rgba(124,92,252,0.08)',
             }}>
-              <GraduationCap size={20} />
+              <img src="/logo.png" alt="KnoQ-AI Logo" style={{ width: 20, height: 20, objectFit: 'cover', borderRadius: '50%' }} />
             </div>
-            <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)' }}>Knoq-AI</span>
+            <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)' }}>KnoQ-AI</span>
           </Link>
 
           <div className="glass-card" style={{ padding: '2rem' }}>

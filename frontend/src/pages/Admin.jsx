@@ -54,7 +54,7 @@ export default function Admin() {
         <header style={{ marginBottom: 32 }}>
           <div className="sec-label">Admin Dashboard</div>
           <h1 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', fontWeight: 600, color: 'var(--text)' }}>
-            Manage <span className="grad-text">Knoq-AI</span>
+            Manage <span className="grad-text">KnoQ-AI</span>
           </h1>
         </header>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: 24 }}>

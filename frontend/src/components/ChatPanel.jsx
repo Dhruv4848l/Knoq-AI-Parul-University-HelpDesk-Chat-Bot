@@ -120,7 +120,7 @@ const AUTHED_SUGGESTIONS = ["Tell me about scholarships", "How do I get a transc
 export function ChatPanel({ mode = "free", height = 520 }) {
   const initial = mode === "authed"
     ? "Welcome back! Ask me anything about campus — I'll search the knowledge base and use AI when needed."
-    : "Hi! I'm Knoq-AI — your AI-powered campus assistant for Parul University. Ask me anything!";
+    : "Hi! I'm KnoQ-AI — your AI-powered campus assistant for Parul University. Ask me anything!";
 
   const [messages, setMessages] = useState([{ role: "assistant", content: initial }]);
   const [input, setInput] = useState("");
@@ -192,17 +192,13 @@ export function ChatPanel({ mode = "free", height = 520 }) {
         background: 'rgba(124,92,252,0.03)',
       }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <div style={{
+          <img src="/logo.png" alt="KnoQ-AI Logo" style={{
             width: 36, height: 36,
-            background: 'linear-gradient(135deg, var(--v), var(--teal))',
             borderRadius: '50%',
-            display: 'flex', alignItems: 'center', justifyContent: 'center',
-            color: '#fff', fontSize: 16, position: 'relative',
-          }}>
-            <Bot size={18} />
-          </div>
+            objectFit: 'cover'
+          }} />
           <div>
-            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>Knoq-AI</div>
+            <div style={{ fontSize: 13, fontWeight: 500, color: 'var(--text)' }}>KnoQ-AI</div>
             <div style={{ fontSize: 11, color: 'var(--text3)' }}>
               {mode === "authed" ? "Full access · AI + Knowledge Base" : "AI + Knowledge Base · Guest"}
             </div>

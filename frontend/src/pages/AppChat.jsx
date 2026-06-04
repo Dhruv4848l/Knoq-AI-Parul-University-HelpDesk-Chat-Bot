@@ -36,7 +36,7 @@ export default function AppChat() {
       <main style={{ position: 'relative', zIndex: 1, maxWidth: 1100, width: '100%', margin: '0 auto', padding: '2rem', flex: 1 }}>
         <div style={{ marginBottom: 32 }}>
           <h1 style={{ fontSize: 'clamp(1.8rem, 4vw, 2.5rem)', fontWeight: 600, color: 'var(--text)', marginBottom: 8 }}>
-            Ask <span className="grad-text">Knoq-AI</span>
+            Ask <span className="grad-text">KnoQ-AI</span>
           </h1>
           <p style={{ fontSize: 14, color: 'var(--text2)' }}>Search the knowledge base, then AI fills the gaps. Every chat is saved to your history.</p>
         </div>

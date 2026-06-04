@@ -35,9 +35,9 @@ export function Nav() {
           background: 'rgba(124,92,252,0.08)',
           transition: 'all 0.4s cubic-bezier(.34,1.56,.64,1)',
         }}>
-          <GraduationCap size={20} />
+          <img src="/logo.png" alt="KnoQ-AI Logo" style={{ width: 20, height: 20, objectFit: 'cover', borderRadius: '50%' }} />
         </div>
-        <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', letterSpacing: '-0.01em' }}>Knoq-AI</span>
+        <span style={{ fontSize: 15, fontWeight: 500, color: 'var(--text)', letterSpacing: '-0.01em' }}>KnoQ-AI</span>
       </Link>
 
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>

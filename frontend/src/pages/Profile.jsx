@@ -46,7 +46,7 @@ export default function ProfilePage() {
           Tell us <span className="grad-text">about you</span>
         </h1>
         <p style={{ fontSize: 14, color: 'var(--text2)', marginBottom: 32 }}>
-          Knoq-AI will tailor exam dates, fees, hostel rules, and notices to your branch and year.
+          KnoQ-AI will tailor exam dates, fees, hostel rules, and notices to your branch and year.
         </p>
 
         {!signedIn && (
@@ -88,7 +88,7 @@ export default function ProfilePage() {
               <button disabled={loading} className="btn-glow" style={{ width: '100%', justifyContent: 'center' }}>
                 <Save size={16} /> {saved ? "Saved!" : loading ? "Saving…" : "Save preferences"}
               </button>
-              <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center' }}>Knoq-AI will use these to tailor its replies to you.</p>
+              <p style={{ fontSize: 12, color: 'var(--text3)', textAlign: 'center' }}>KnoQ-AI will use these to tailor its replies to you.</p>
             </form>
 
             {/* Academic ID Card Mockup Column */}
@@ -119,19 +119,13 @@ export default function ProfilePage() {
               </div>
 
               {/* Card Avatar / Icon */}
-              <div style={{
+              <img src="/logo.png" alt="KnoQ-AI Logo" style={{
                 width: 72, height: 72,
                 borderRadius: 22,
-                background: 'linear-gradient(135deg, var(--v), var(--teal))',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: '#fff',
+                objectFit: 'cover',
                 boxShadow: '0 8px 24px var(--v-glow)',
                 marginBottom: 16
-              }}>
-                <GraduationCap size={36} />
-              </div>
+              }} />
 
               {/* Card User Details */}
               <h3 style={{ fontSize: 18, fontWeight: 600, color: 'var(--text)', marginBottom: 4 }}>

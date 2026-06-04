@@ -334,7 +334,7 @@ function Home() {
               Scroll to reveal the workspace and start chatting with our AI-powered assistant directly on-page.
             </p>
             <p style={{ fontSize: 18, fontWeight: 600, color: "rgba(255,255,255,0.85)", marginTop: 32 }}>
-              Knoq-AI Chat Terminal
+              KnoQ-AI Chat Terminal
             </p>
           </div>
         </div>
@@ -883,22 +883,16 @@ function Home() {
             {/* Brand */}
             <div style={{ gridColumn: "span 2" }}>
               <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
-                <div
+                <img
+                  src="/logo.png"
+                  alt="KnoQ-AI Logo"
                   style={{
                     width: 34,
                     height: 34,
                     borderRadius: "4px",
-                    background: "#ffffff",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontWeight: 800,
-                    color: "#030303",
-                    fontSize: 14,
+                    objectFit: "cover",
                   }}
-                >
-                  K
-                </div>
+                />
                 <span style={{ fontSize: 17, fontWeight: 700, color: "#fff", letterSpacing: "0.02em" }}>KNOQ-AI</span>
               </div>
               <p style={{ fontSize: 13, color: "var(--text3)", maxWidth: 340, lineHeight: 1.7 }}>
@@ -970,7 +964,7 @@ function Home() {
             }}
           >
             <div style={{ fontSize: 12, color: "var(--text3)" }}>
-              © {new Date().getFullYear()} Knoq-AI · Parul University Helpdesk
+              © {new Date().getFullYear()} KnoQ-AI · Parul University Helpdesk
             </div>
             <div style={{ display: "flex", alignItems: "center", gap: 16 }}>
               <span className="ver-tag">v1.0 (MERN)</span>

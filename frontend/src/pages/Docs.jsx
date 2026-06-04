@@ -18,13 +18,13 @@ export default function Docs() {
           Vector Search over <span className="grad-text">college docs</span>
         </h1>
         <p style={{ fontSize: 15, color: 'var(--text2)', marginBottom: 40, maxWidth: 700 }}>
-          Learn how Knoq-AI ingests handbooks, circulars, and timetables to provide exact, cited answers to student queries.
+          Learn how KnoQ-AI ingests handbooks, circulars, and timetables to provide exact, cited answers to student queries.
         </p>
 
         {/* ═══ INTERACTIVE DIAGRAM ═══ */}
         <div className="glass-card" style={{ marginBottom: 32, padding: '2.5rem' }}>
           <h2 style={{ fontSize: 16, fontWeight: 600, color: 'var(--text)', marginBottom: 24, display: 'flex', alignItems: 'center', gap: 8 }}>
-            <Sparkles size={16} style={{ color: 'var(--teal)' }} /> How Knoq-AI Works: RAG Architecture Flow
+            <Sparkles size={16} style={{ color: 'var(--teal)' }} /> How KnoQ-AI Works: RAG Architecture Flow
           </h2>
           <div style={{
             display: 'flex',

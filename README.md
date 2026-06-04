@@ -44,7 +44,8 @@
 9. [API Reference](#-api-reference)
 10. [Data Pipeline](#-data-pipeline)
 11. [Deployment](#-deployment)
-12. [Contributing](#-contributing)
+12. [Authors](#-authors)
+13. [Contributing](#-contributing)
 
 ---
 
@@ -691,6 +692,63 @@ See [`DEPLOYMENT_ROADMAP.md`](./DEPLOYMENT_ROADMAP.md) for the complete step-by-
 Quick links:
 - [Deploy Frontend to Vercel →](./DEPLOYMENT_ROADMAP.md#-step-1-deploy-backend-to-render)
 - [Deploy Backend to Render →](./DEPLOYMENT_ROADMAP.md#-step-2-deploy-frontend-to-vercel)
+
+---
+
+## 👥 Authors
+
+<div align="center">
+
+<table>
+  <tr>
+    <td align="center">
+      <a href="https://github.com/Dhruv4848l">
+        <img src="https://github.com/Dhruv4848l.png?size=150" width="130" height="130" style="border-radius:12px;" alt="Dhruv Maji" /><br />
+        <b>Dhruv Maji</b>
+      </a><br />
+      <sub>2303031310002</sub><br />
+      <a href="https://www.linkedin.com/in/mr-dhruv-maji">🔗 LinkedIn</a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/Aanshimodi">
+        <img src="https://github.com/Aanshimodi.png?size=150" width="130" height="130" style="border-radius:12px;" alt="Aanshi Modi" /><br />
+        <b>Aanshi Modi</b>
+      </a><br />
+      <sub>2303051240002</sub><br />
+      <a href="https://www.linkedin.com/in/aanshi-m-551139264">🔗 LinkedIn</a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/kamlakantkumar51">
+        <img src="https://github.com/kamlakantkumar51.png?size=150" width="130" height="130" style="border-radius:12px;" alt="Kamlakant Kumar" /><br />
+        <b>Kamlakant Kumar</b>
+      </a><br />
+      <sub>2303051050341</sub><br />
+      <a href="https://www.linkedin.com/in/kamlakant-kumar-300379209">🔗 LinkedIn</a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/kavya070605">
+        <img src="https://github.com/kavya070605.png?size=150" width="130" height="130" style="border-radius:12px;" alt="Kavya Rana" /><br />
+        <b>Kavya Rana</b>
+      </a><br />
+      <sub>2303031250114</sub><br />
+      <a href="https://www.linkedin.com/in/kayarana07">🔗 LinkedIn</a>
+    </td>
+    <td align="center">
+      <a href="https://github.com/Rishee-Varma">
+        <img src="https://github.com/Rishee-Varma.png?size=150" width="130" height="130" style="border-radius:12px;" alt="Rishee Varma" /><br />
+        <b>Rishee Varma</b>
+      </a><br />
+      <sub>2303051050658</sub><br />
+      <a href="https://www.linkedin.com/in/rishee-varma-2436a5385">🔗 LinkedIn</a>
+    </td>
+  </tr>
+</table>
+
+<br />
+
+**Parul Institute of Engineering & Technology** B.Tech Computer Science & Engineering · Batch 2023–2027
+
+</div>
 
 ---
 

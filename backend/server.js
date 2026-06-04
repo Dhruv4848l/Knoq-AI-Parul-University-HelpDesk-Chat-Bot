@@ -59,16 +59,30 @@ app.use((err, req, res, next) => {
 // Connect to MongoDB and start server
 const PORT = process.env.PORT || 5000;
 
-mongoose
-  .connect(process.env.MONGODB_URI)
-  .then(async () => {
-    console.log("Connected to MongoDB");
-    await initMapCache();
-    app.listen(PORT, () => {
-      console.log(`Server running on port ${PORT}`);
-    });
-  })
-  .catch((error) => {
-    console.error("MongoDB connection error:", error);
-    process.exit(1);
+const startServer = () => {
+  app.listen(PORT, () => {
+    console.log(`Server running on port ${PORT}`);
   });
+};
+
+if (!process.env.MONGODB_URI || process.env.MONGODB_URI.includes("your_mongodb_atlas_url") || process.env.MONGODB_URI.includes("localhost:27017")) {
+  console.warn("⚠️ MONGODB_URI is not fully configured or pointing to an offline local instance. Starting server in fallback/no-database mode (free mode chat will work).");
+  startServer();
+} else {
+  mongoose
+    .connect(process.env.MONGODB_URI)
+    .then(async () => {
+      console.log("Connected to MongoDB");
+      try {
+        await initMapCache();
+      } catch (error) {
+        console.error("Map cache preloading failed:", error.message);
+      }
+      startServer();
+    })
+    .catch((error) => {
+      console.warn("⚠️ MongoDB connection failed. Starting server in fallback/no-database mode:", error.message);
+      startServer();
+    });
+}
+

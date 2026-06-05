@@ -19,7 +19,6 @@
 </p>
 
 <h3>🔗 <a href="https://knoq-ai-chatbot.vercel.app/">Live Demo → knoq-ai-chatbot.vercel.app</a></h3>
-
 </div>
 
 ---
@@ -773,5 +772,4 @@ MIT License — see [LICENSE](LICENSE) for details.
 **Built with ❤️ for Parul University students**
 
 *Knoq-AI · 2026*
-
 </div>

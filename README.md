@@ -1,5 +1,5 @@
 <div align="center">
-
+  
 <h1>🎓 Knoq-AI — Parul University AI Helpdesk</h1>
 
 <p><em>An AI-powered, RAG-driven campus assistant for 40,000+ Parul University students.</em></p>
